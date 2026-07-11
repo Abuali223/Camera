@@ -1,40 +1,31 @@
 {
-  "_izoh": "Bu faylni 'cameras.json' nomi bilan nusxalang va o'z kameralaringiz ma'lumotlarini kiriting. Fayl mavjud bo'lmasa dastur DEMO rejimda ishlaydi.",
+  "_izoh": "Bu faylni 'cameras.json' nomi bilan nusxalang va NVR ma'lumotlaringizni kiriting. Fayl bo'lmasa dastur DEMO rejimda ishlaydi.",
+
+  "geminiApiKey": "BU_YERGA_GEMINI_KALITINGIZNI_YOZING",
+  "tts": { "voice": "Leda" },
+
   "telegram": {
     "botToken": "",
     "chatId": ""
   },
-  "geminiApiKey": "BU_YERGA_GEMINI_KALITINGIZNI_YOZING",
-  "tts": { "voice": "Leda" },
-  "anthropicApiKey": "",
+
+  "_nvr_izoh": "Barcha kameralar bitta NVR'ga ulangan bo'lsa — IP, login, parolni shu yerda bir marta yozing. Har kamera faqat o'z kanalini ko'rsatadi (101=1-kamera, 201=2-kamera ...). Sub-oqim (102, 202 ...) yengilroq va ko'p kamera uchun ravon.",
+  "nvr": {
+    "ip": "192.168.1.100",
+    "port": 554,
+    "httpPort": 80,
+    "user": "admin",
+    "password": "NVR_PAROLINGIZ"
+  },
+
   "cameras": [
-    {
-      "id": "CAM-01",
-      "name": "Asosiy kirish",
-      "zone": "Perimetr",
-      "ip": "192.168.1.64",
-      "port": 554,
-      "httpPort": 80,
-      "user": "admin",
-      "password": "parol123",
-      "channel": 101,
-      "model": "Hikvision DS-2CD",
-      "restricted": true,
-      "ai": ["Kirish", "Yuz", "Harakat"]
-    },
-    {
-      "id": "CAM-02",
-      "name": "Ombor",
-      "zone": "Ombor",
-      "ip": "192.168.1.65",
-      "port": 554,
-      "httpPort": 80,
-      "user": "admin",
-      "password": "parol123",
-      "channel": 101,
-      "model": "Hikvision DS-2CD",
-      "restricted": false,
-      "ai": ["Harakat", "Buyum"]
-    }
+    { "id": "CAM-01", "name": "1-kamera", "zone": "Kirish",    "channel": 102, "restricted": true },
+    { "id": "CAM-02", "name": "2-kamera", "zone": "Ombor",     "channel": 202 },
+    { "id": "CAM-03", "name": "3-kamera", "zone": "Sex",       "channel": 302 },
+    { "id": "CAM-04", "name": "4-kamera", "zone": "Koridor",   "channel": 402 },
+    { "id": "CAM-05", "name": "5-kamera", "zone": "Hovli",     "channel": 502 },
+    { "id": "CAM-06", "name": "6-kamera", "zone": "Avtoturargoh", "channel": 602 },
+    { "id": "CAM-07", "name": "7-kamera", "zone": "Perimetr",  "channel": 702, "restricted": true },
+    { "id": "CAM-08", "name": "8-kamera", "zone": "Zaxira chiqish", "channel": 802, "restricted": true }
   ]
 }

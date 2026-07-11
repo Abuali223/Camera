@@ -29,7 +29,24 @@ function loadConfig() {
   try {
     const raw = fs.readFileSync(CONFIG_PATH, 'utf8');
     const cfg = JSON.parse(raw);
-    cfg.demo = !Array.isArray(cfg.cameras) || cfg.cameras.length === 0;
+    // NVR/umumiy sozlamalarni har kameraga qo'llash — parol/IP bir joyda yoziladi,
+    // har kamera faqat o'z kanalini (channel) ko'rsatadi.
+    const d = cfg.nvr || {};
+    cfg.cameras = (Array.isArray(cfg.cameras) ? cfg.cameras : []).map((c, i) => ({
+      id: `CAM-${String(i + 1).padStart(2, '0')}`,
+      name: `${i + 1}-kamera`,
+      zone: '',
+      ip: d.ip,
+      port: d.port || 554,
+      httpPort: d.httpPort || 80,
+      user: d.user || 'admin',
+      password: d.password,
+      channel: 101,
+      restricted: false,
+      ai: ['Harakat', 'Kirish'],
+      ...c, // kameraning o'z qiymatlari umumiy sozlamadan ustun
+    }));
+    cfg.demo = cfg.cameras.length === 0 || !cfg.cameras.some((c) => c.ip);
     return cfg;
   } catch {
     return { demo: true, cameras: [], telegram: {}, anthropicApiKey: '' };
