@@ -1,0 +1,16 @@
+{
+  "name": "sentinel-ai",
+  "version": "1.0.0",
+  "description": "Sentinel AI — Hikvision/NIKVision kameralari uchun AI video nazorat platformasi",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.17.0"
+  }
+}

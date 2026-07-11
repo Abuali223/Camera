@@ -1,0 +1,4 @@
+node_modules/
+server/cameras.json
+.firebase/
+*.log

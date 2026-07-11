@@ -1,0 +1,38 @@
+{
+  "_izoh": "Bu faylni 'cameras.json' nomi bilan nusxalang va o'z kameralaringiz ma'lumotlarini kiriting. Fayl mavjud bo'lmasa dastur DEMO rejimda ishlaydi.",
+  "telegram": {
+    "botToken": "",
+    "chatId": ""
+  },
+  "anthropicApiKey": "",
+  "cameras": [
+    {
+      "id": "CAM-01",
+      "name": "Asosiy kirish",
+      "zone": "Perimetr",
+      "ip": "192.168.1.64",
+      "port": 554,
+      "httpPort": 80,
+      "user": "admin",
+      "password": "parol123",
+      "channel": 101,
+      "model": "Hikvision DS-2CD",
+      "restricted": true,
+      "ai": ["Kirish", "Yuz", "Harakat"]
+    },
+    {
+      "id": "CAM-02",
+      "name": "Ombor",
+      "zone": "Ombor",
+      "ip": "192.168.1.65",
+      "port": 554,
+      "httpPort": 80,
+      "user": "admin",
+      "password": "parol123",
+      "channel": 101,
+      "model": "Hikvision DS-2CD",
+      "restricted": false,
+      "ai": ["Harakat", "Buyum"]
+    }
+  ]
+}
