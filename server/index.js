@@ -201,7 +201,7 @@ async function geminiTts(text, key, voice) {
         contents: [{ parts: [{ text: `O'zbek tilida tabiiy, xotirjam va ishonchli ohangda o'qib ber: ${text}` }] }],
         generationConfig: {
           responseModalities: ['AUDIO'],
-          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice || 'Kore' } } },
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice || 'Leda' } } },
         },
       }),
     }
@@ -272,7 +272,7 @@ const server = http.createServer(async (req, res) => {
       const text = String(body.text || '').slice(0, 600);
       if (!text) return sendJson(res, 400, { error: 'Matn berilmadi' });
       try {
-        const wav = await geminiTts(text, gkey, (config.tts && config.tts.voice) || 'Kore');
+        const wav = await geminiTts(text, gkey, (config.tts && config.tts.voice) || 'Leda');
         res.writeHead(200, { 'Content-Type': 'audio/wav', 'Cache-Control': 'no-store' });
         return res.end(wav);
       } catch (e) {

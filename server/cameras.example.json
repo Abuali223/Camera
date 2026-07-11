@@ -5,7 +5,7 @@
     "chatId": ""
   },
   "geminiApiKey": "BU_YERGA_GEMINI_KALITINGIZNI_YOZING",
-  "tts": { "voice": "Kore" },
+  "tts": { "voice": "Leda" },
   "anthropicApiKey": "",
   "cameras": [
     {
