@@ -51,7 +51,7 @@ const App = {
   async loadCameras() {
     try {
       const st = await fetch('/api/status').then((x) => x.json());
-      this.features = { ai: st.ai, telegram: st.telegram };
+      this.features = { ai: st.ai, telegram: st.telegram, tts: st.tts };
       const r = await fetch('/api/cameras');
       const data = await r.json();
       this.serverOk = true;
@@ -65,7 +65,7 @@ const App = {
     } catch {
       // server yo'q (masalan Firebase hostingdagi statik demo) — demo rejim
       this.serverOk = false;
-      this.features = { ai: false, telegram: false };
+      this.features = { ai: false, telegram: false, tts: false };
       this.demo = true;
       this.cameras = DEMO_CAMERAS.map((c) => ({ ...c }));
     }

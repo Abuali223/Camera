@@ -121,11 +121,33 @@ const Assistant = {
       .trim();
   },
 
-  speak(text) {
-    if (!this.voiceEnabled || !('speechSynthesis' in window)) return;
+  async speak(text) {
+    if (!this.voiceEnabled) return;
+    const clean = this._speakable(text);
+
+    // 1) Sifatli ovoz: lokal server + Gemini TTS (sozlangan bo'lsa)
+    if (App.features?.tts) {
+      try {
+        const r = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: clean }),
+        });
+        if (r.ok) {
+          const blob = await r.blob();
+          if (this._audio) { try { this._audio.pause(); } catch {} }
+          this._audio = new Audio(URL.createObjectURL(blob));
+          this._audio.play();
+          return;
+        }
+      } catch {}
+    }
+
+    // 2) Zaxira: brauzerning o'z ovozi
+    if (!('speechSynthesis' in window)) return;
     try {
       speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(this._speakable(text));
+      const u = new SpeechSynthesisUtterance(clean);
       const v = this._pickVoice();
       if (v) { u.voice = v; u.lang = v.lang; }
       u.rate = 0.95;
@@ -249,6 +271,7 @@ const Assistant = {
       if (has("o'chir", 'uchir', 'jim')) {
         this.voiceEnabled = false;
         try { speechSynthesis.cancel(); } catch {}
+        if (this._audio) { try { this._audio.pause(); } catch {} }
         this.say("Ovozli javob o'chirildi — endi faqat yozib javob beraman.");
         return;
       }

@@ -176,6 +176,46 @@ function stopStreamIfIdle(camId) {
   }
 }
 
+// ---------------------------------------------------- Gemini TTS (sifatli ovoz)
+/** Xom PCM (L16) ni brauzer o'qiy oladigan WAV ga o'rash */
+function pcmToWav(pcm, rate = 24000, channels = 1) {
+  const h = Buffer.alloc(44);
+  h.write('RIFF', 0); h.writeUInt32LE(36 + pcm.length, 4); h.write('WAVE', 8);
+  h.write('fmt ', 12); h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20);
+  h.writeUInt16LE(channels, 22); h.writeUInt32LE(rate, 24);
+  h.writeUInt32LE(rate * channels * 2, 28); h.writeUInt16LE(channels * 2, 32);
+  h.writeUInt16LE(16, 34); h.write('data', 36); h.writeUInt32LE(pcm.length, 40);
+  return Buffer.concat([h, pcm]);
+}
+
+const ttsCache = new Map(); // matn -> wav buffer (takroriy iboralar uchun)
+
+async function geminiTts(text, key, voice) {
+  if (ttsCache.has(text)) return ttsCache.get(text);
+  const r = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${encodeURIComponent(key)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: `O'zbek tilida tabiiy, xotirjam va ishonchli ohangda o'qib ber: ${text}` }] }],
+        generationConfig: {
+          responseModalities: ['AUDIO'],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice || 'Kore' } } },
+        },
+      }),
+    }
+  );
+  const data = await r.json();
+  if (!r.ok) throw new Error((data.error && data.error.message) || 'TTS xatosi');
+  const b64 = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+  if (!b64) throw new Error('Audio qaytmadi');
+  const wav = pcmToWav(Buffer.from(b64, 'base64'));
+  if (ttsCache.size > 40) ttsCache.delete(ttsCache.keys().next().value);
+  ttsCache.set(text, wav);
+  return wav;
+}
+
 // ---------------------------------------------------------------- yordamchi
 function sendJson(res, code, obj) {
   const body = JSON.stringify(obj);
@@ -219,9 +259,25 @@ const server = http.createServer(async (req, res) => {
         ok: true,
         demo: config.demo,
         cameras: (config.cameras || []).length,
-        ai: Boolean(config.anthropicApiKey || process.env.ANTHROPIC_API_KEY),
+        ai: Boolean(config.anthropicApiKey || config.geminiApiKey || process.env.ANTHROPIC_API_KEY || process.env.GEMINI_API_KEY),
+        tts: Boolean(config.geminiApiKey || process.env.GEMINI_API_KEY),
         telegram: Boolean(config.telegram && config.telegram.botToken),
       });
+    }
+
+    if (p === '/api/tts' && req.method === 'POST') {
+      const gkey = config.geminiApiKey || process.env.GEMINI_API_KEY;
+      if (!gkey) return sendJson(res, 400, { error: 'Gemini kaliti sozlanmagan (cameras.json → geminiApiKey)' });
+      const body = JSON.parse((await readBody(req)) || '{}');
+      const text = String(body.text || '').slice(0, 600);
+      if (!text) return sendJson(res, 400, { error: 'Matn berilmadi' });
+      try {
+        const wav = await geminiTts(text, gkey, (config.tts && config.tts.voice) || 'Kore');
+        res.writeHead(200, { 'Content-Type': 'audio/wav', 'Cache-Control': 'no-store' });
+        return res.end(wav);
+      } catch (e) {
+        return sendJson(res, 502, { error: 'TTS xatosi: ' + e.message });
+      }
     }
 
     if (p === '/api/cameras') {
@@ -273,27 +329,48 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (p === '/api/ai' && req.method === 'POST') {
-      const key = config.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
-      if (!key) return sendJson(res, 400, { error: 'AI kaliti sozlanmagan' });
+      const akey = config.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
+      const gkey = config.geminiApiKey || process.env.GEMINI_API_KEY;
+      if (!akey && !gkey) return sendJson(res, 400, { error: 'AI kaliti sozlanmagan' });
       const body = JSON.parse((await readBody(req)) || '{}');
-      const r = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': key,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 600,
-          system:
-            "Sen Sentinel AI — video xavfsizlik nazorat tizimining yordamchisisan. O'zbek tilida qisqa, aniq javob ber. " +
-            'Kontekst: ' + (body.context || ''),
-          messages: [{ role: 'user', content: String(body.message || '') }],
-        }),
-      });
+      const system =
+        "Sen Sentinel AI — video xavfsizlik nazorat tizimining yordamchisisan. O'zbek tilida qisqa (2-3 gap), aniq va do'stona javob ber. " +
+        'Tizim holati: ' + (body.context || '');
+
+      if (akey) {
+        const r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': akey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 600,
+            system,
+            messages: [{ role: 'user', content: String(body.message || '') }],
+          }),
+        });
+        const data = await r.json();
+        const text = data && data.content && data.content[0] ? data.content[0].text : 'Javob olinmadi';
+        return sendJson(res, 200, { text });
+      }
+
+      // Gemini orqali javob
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${encodeURIComponent(gkey)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: system }] },
+            contents: [{ parts: [{ text: String(body.message || '') }] }],
+          }),
+        }
+      );
       const data = await r.json();
-      const text = data && data.content && data.content[0] ? data.content[0].text : 'Javob olinmadi';
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Javob olinmadi';
       return sendJson(res, 200, { text });
     }
 
