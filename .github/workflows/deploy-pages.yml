@@ -26,6 +26,11 @@ jobs:
         run: |
           cd public
           touch .nojekyll
+          # kesh-busting: har deploy'da fayllar yangi manzil oladi,
+          # brauzer eski keshni ishlatmaydi
+          BUILD="${GITHUB_SHA::7}"
+          sed -i "s/__BUILD__/${BUILD}/g" index.html
+          echo "{\"build\":\"${BUILD}\"}" > version.json
           git init -b gh-pages
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

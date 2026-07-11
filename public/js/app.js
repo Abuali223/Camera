@@ -27,6 +27,25 @@ const App = {
     Detector.init(this.demo);
     this.buildStreams();
     this.renderAll();
+    this.startUpdateChecker();
+  },
+
+  /** Yangi versiya chiqsa saytni avtomatik yangilaydi (kesh muammosini hal qiladi).
+   *  Deploy paytida __BUILD__ o'rniga commit belgisi yoziladi; lokal serverda o'chiq. */
+  startUpdateChecker() {
+    const build = window.BUILD;
+    if (!build || build === '__BUILD__') return;
+    setInterval(async () => {
+      try {
+        const r = await fetch('version.json?ts=' + Date.now(), { cache: 'no-store' });
+        if (!r.ok) return;
+        const v = await r.json();
+        if (v.build && v.build !== build) {
+          this.toast('Yangi versiya topildi', 'Sahifa 3 soniyada yangilanadi…', 'var(--accent)');
+          setTimeout(() => location.reload(), 3000);
+        }
+      } catch {}
+    }, 5 * 60 * 1000);
   },
 
   async loadCameras() {

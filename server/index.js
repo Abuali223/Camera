@@ -308,7 +308,11 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
         return res.end('Topilmadi');
       }
-      res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath)] || 'application/octet-stream' });
+      res.writeHead(200, {
+        'Content-Type': MIME[path.extname(filePath)] || 'application/octet-stream',
+        // lokal ishlatishda kesh o'chirilgan — o'zgarishlar darhol ko'rinadi
+        'Cache-Control': 'no-store',
+      });
       res.end(data);
     });
   } catch (e) {
