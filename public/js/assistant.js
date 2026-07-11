@@ -29,6 +29,9 @@ const Assistant = {
       }
     });
     this._setupRecognition();
+    if ('speechSynthesis' in window) {
+      speechSynthesis.addEventListener('voiceschanged', () => { this._voice = null; this._pickVoice(); });
+    }
   },
 
   toggle(open) {
@@ -86,18 +89,47 @@ const Assistant = {
     try { this.recog.start(); } catch {}
   },
 
+  /** Eng tabiiy ovozni tanlash: uz > Google turk > turk > Google rus > rus.
+   *  Turk ovozi o'zbek lotin matnini rus ovozidan ancha tabiiyroq o'qiydi. */
+  _pickVoice() {
+    if (this._voice) return this._voice;
+    const vs = speechSynthesis.getVoices();
+    if (!vs.length) return null;
+    const prefs = [
+      (v) => v.lang.toLowerCase().startsWith('uz'),
+      (v) => /google/i.test(v.name) && v.lang.startsWith('tr'),
+      (v) => v.lang.startsWith('tr'),
+      (v) => /google/i.test(v.name) && v.lang.startsWith('ru'),
+      (v) => v.lang.startsWith('ru'),
+    ];
+    for (const f of prefs) {
+      const v = vs.find(f);
+      if (v) { this._voice = v; return v; }
+    }
+    return null;
+  },
+
+  /** Matnni talaffuzga tayyorlash: emoji/belgilarni olib tashlash, sonlarni tabiiylashtirish */
+  _speakable(text) {
+    return text
+      .replace(/[⚠️🚨📷⬇️✓•·—]/g, ' ')
+      .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')
+      .replace(/(\d+)\s*%/g, '$1 foiz')
+      .replace(/CAM-0?(\d+)/g, 'kamera $1')
+      .replace(/["'ʻʼ`]/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  },
+
   speak(text) {
     if (!this.voiceEnabled || !('speechSynthesis' in window)) return;
     try {
       speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      // uz ovozi kam uchraydi — mavjud bo'lsa uz, bo'lmasa tr/ru yaqin talaffuz beradi
-      const voices = speechSynthesis.getVoices();
-      const v = voices.find((x) => x.lang.startsWith('uz')) ||
-                voices.find((x) => x.lang.startsWith('tr')) ||
-                voices.find((x) => x.lang.startsWith('ru'));
-      if (v) u.voice = v;
-      u.rate = 1.02;
+      const u = new SpeechSynthesisUtterance(this._speakable(text));
+      const v = this._pickVoice();
+      if (v) { u.voice = v; u.lang = v.lang; }
+      u.rate = 0.95;
+      u.pitch = 1;
       speechSynthesis.speak(u);
     } catch {}
   },
@@ -120,7 +152,8 @@ const Assistant = {
     log.scrollTop = log.scrollHeight;
   },
 
-  say(text, speak = true) {
+  /** Odatiy javoblar faqat matn; ovoz faqat muhim xabarlarda (speak=true berilganda) */
+  say(text, speak = false) {
     this.addMsg('bot', text);
     if (speak) this.speak(text);
   },
@@ -149,7 +182,7 @@ const Assistant = {
       const camId = camMatch ? this._camByNum(camMatch[1]) : (App.screen === 'detail' ? App.detailCam : App.cameras[0]?.id);
       const url = App.takeSnapshot(camId, false);
       if (url) {
-        this.say(`Surat olindi: ${camId}, ${App.nowStr()}. "Suratlar" bo'limida saqlandi.`, true);
+        this.say(`Surat olindi: ${camId}, ${App.nowStr()}. "Suratlar" bo'limida saqlandi.`);
         this.addMsg('bot', '', url);
       } else {
         this.say('Kechirasiz, bu kameradan surat olib bo\'lmadi — u oflayn bo\'lishi mumkin.');
@@ -211,8 +244,23 @@ const Assistant = {
       return;
     }
 
-    // --- sirena/ovoz ---
-    if (has('sirena', 'сирен', 'ovoz')) {
+    // --- yordamchi ovozi (TTS) ---
+    if (has('ovoz') && !has('sirena')) {
+      if (has("o'chir", 'uchir', 'jim')) {
+        this.voiceEnabled = false;
+        try { speechSynthesis.cancel(); } catch {}
+        this.say("Ovozli javob o'chirildi — endi faqat yozib javob beraman.");
+        return;
+      }
+      if (has('yoq', 'gapir')) {
+        this.voiceEnabled = true;
+        this.say('Ovozli javob yoqildi.', true);
+        return;
+      }
+    }
+
+    // --- sirena ---
+    if (has('sirena', 'сирен')) {
       if (has("o'chir", 'uchir', 'выключ', "to'xtat", 'toxtat')) {
         App.sirenaOn = false;
         this.say('Sirena o\'chirildi.');
@@ -254,10 +302,11 @@ const Assistant = {
         '• "holatni ayt" — umumiy xavfsizlik hisoboti\n' +
         '• "kamera 2 ni och" — kamerani ochish\n' +
         '• "signallarni ko\'rsat", "analitika", "jonli devor" — bo\'limlar\n' +
-        '• "sirena o\'chir / yoq" — ovozli ogohlantirish\n' +
+        '• "sirena o\'chir / yoq" — xavf sirenasi\n' +
+        '• "ovozni o\'chir / yoq" — mening ovozli javobim\n' +
         '• "hammasini tasdiqla" — signallarni yopish\n' +
         '• "qorong\'i / yorug\' rejim" — mavzu\n' +
-        'Xavfli vaziyat aniqlansa o\'zim ogohlantiraman va surat olaman.', false);
+        'Surat faqat siz buyurganingizda yoki yuqori xavfli vaziyatda avtomatik olinadi.', false);
       return;
     }
 

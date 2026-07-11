@@ -61,11 +61,16 @@ Yordamchi panelini ochib (o'ng pastdagi tugma) mikrofon belgisini bosing:
 - **"holatni ayt"** — umumiy xavfsizlik hisoboti (ovozli javob)
 - **"kamera 2 ni och"** — kamera batafsil ko'rinishi
 - **"signallarni ko'rsat"**, "analitika", "jonli devor" — bo'limlar
-- **"sirena o'chir / yoq"** — ovozli ogohlantirishni boshqarish
+- **"sirena o'chir / yoq"** — xavf sirenasini boshqarish
+- **"ovozni o'chir / yoq"** — yordamchining ovozli javobini boshqarish
 - **"hammasini tasdiqla"** — signallarni yopish
+
+Surat **faqat siz buyurganingizda** yoki **yuqori xavfli vaziyatda** avtomatik olinadi.
 
 > Ovoz tanish Chrome/Edge brauzerlarida ishlaydi. O'zbekcha ovoz tanish qo'llanmasa
 > tizim avtomatik ruschaga o'tadi; matnli buyruqlar har doim o'zbekcha ishlaydi.
+> Ovozli javob uchun brauzerda tayyor o'zbek ovozi bo'lmagani sabab eng yaqin
+> tabiiy ovoz (turkcha/ruscha) tanlanadi; yordamchi faqat muhim xabarlarda gapiradi.
 
 ## Firebase'ga joylash (hosting)
 

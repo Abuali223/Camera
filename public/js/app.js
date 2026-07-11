@@ -255,11 +255,14 @@ const App = {
 
   raiseAlert(a) {
     const alert = this._makeAlert(a);
-    // muhim daqiqa — avtomatik surat
-    const snap = this.captureFrame(a.cam);
-    if (snap) {
-      alert.snapshot = snap;
-      this.addSnapshot(a.cam, snap, a.type, true);
+    // surat faqat yuqori xavfli vaziyatda avtomatik olinadi
+    // (qolgan hollarda foydalanuvchi o'zi "rasmga ol" deb buyuradi)
+    if (a.level === 'high') {
+      const snap = this.captureFrame(a.cam);
+      if (snap) {
+        alert.snapshot = snap;
+        this.addSnapshot(a.cam, snap, a.type, true);
+      }
     }
     this.alerts.unshift(alert);
     if (this.alerts.length > 200) this.alerts.pop();
