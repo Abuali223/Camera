@@ -1,14 +1,15 @@
 name: GitHub Pages'ga deploy
 
+# Har main push'da public/ papkasi gh-pages branchiga ko'chiriladi —
+# GitHub Pages saytni o'sha branchdan servis qiladi.
+
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
@@ -17,23 +18,17 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Kodni olish
         uses: actions/checkout@v4
 
-      - name: Pages'ni sozlash
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
-      - name: Sayt fayllarini yuklash (public/)
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: public
-
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: public/ ni gh-pages branchiga joylash
+        run: |
+          cd public
+          touch .nojekyll
+          git init -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Pages deploy: ${GITHUB_SHA::7}"
+          git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages
