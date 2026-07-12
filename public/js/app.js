@@ -214,13 +214,24 @@ const App = {
 
   // ---------------------------------------------------------- AI aniqlash sikli
   startDetectionLoop() {
+    // Yengil rejim: har tickда faqat BITTA kamera tahlil qilinadi (navbat bilan).
+    // Shu tufayli 8 kamera brauzerни sekinlashtirmaydi; har kamera ~har necha
+    // soniyада tekshiriladi. Demo rejimда hammasini tez tekshiraveradi.
+    let idx = 0;
+    const perTick = this.demo ? 99 : 2; // demo — hammasi; real — navbat bilan (2 tadan)
     setInterval(async () => {
-      for (const cam of this.cameras) {
+      const list = this.cameras.filter((c) => this.streams.get(c.id));
+      if (!list.length) return;
+      const batch = [];
+      for (let k = 0; k < Math.min(perTick, list.length); k++) {
+        batch.push(list[(idx + k) % list.length]);
+      }
+      idx = (idx + batch.length) % list.length;
+      for (const cam of batch) {
         const stream = this.streams.get(cam.id);
         if (!stream) continue;
         const dets = await Detector.detect(stream, cam);
         this.detections.set(cam.id, dets);
-        // xavf qoidasi: cheklangan zonada shaxs yoki xavfli obyekt
         const danger = dets.find((d) => d.danger);
         if (danger && this._canAlert(cam.id)) {
           this.raiseAlert({
@@ -231,7 +242,7 @@ const App = {
       }
       if (this.screen === 'live') this.updateLiveOverlays();
       if (this.screen === 'detail') this.updateDetailOverlays();
-    }, 900);
+    }, this.demo ? 900 : 700);
     this.startOverlayLoop();
   },
 

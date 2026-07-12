@@ -191,12 +191,18 @@ function startStream(cam) {
   const entry = { proc: null, clients: new Set(), buf: Buffer.alloc(0) };
   streams.set(cam.id, entry);
 
+  // Yengil rejim: past kadr tezligi + kichraytirish → 8 kamera bir vaqtda ravon.
+  // config.stream orqali sozlanadi (fps, height, quality).
+  const st = config.stream || {};
+  const fps = st.fps || 6;
+  const height = st.height || 480;
+  const quality = st.quality || 8;
   const args = [
     '-rtsp_transport', 'tcp',
     '-i', rtspUrl(cam),
     '-f', 'mjpeg',
-    '-q:v', '6',
-    '-r', '10',
+    '-vf', `fps=${fps},scale=-2:${height}`,
+    '-q:v', String(quality),
     '-an',
     'pipe:1',
   ];
