@@ -200,16 +200,20 @@ function startTsStream(ws, cam, quality) {
   const ch = channelFor(cam, quality);
   const url = rtspUrlCh(cam, ch);
   const useGpu = st.gpu !== false; // standart: RTX video kartasi
-  const bitrate = quality === 'main' ? (st.mainBitrate || '10M') : (st.subBitrate || '1500k');
+  const isMain = quality === 'main';
+  // Asosiy (8MP) — yuqori bitrate (raqamlar o'qiladi); sub — yengil
+  const bitrate = isMain ? (st.mainBitrate || '16M') : (st.subBitrate || '2500k');
 
   const spawnFf = (gpu) => {
     const args = ['-rtsp_transport', 'tcp', '-fflags', 'nobuffer', '-flags', 'low_delay'];
     if (gpu) args.push('-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda');
     args.push('-i', url, '-an');
     if (gpu) {
-      args.push('-c:v', 'h264_nvenc', '-preset', 'p4', '-tune', 'll',
+      // asosiy oqim — sifat (p5/hq), sub — past kechikish (p4/ll)
+      args.push('-c:v', 'h264_nvenc',
+        '-preset', isMain ? 'p5' : 'p4', '-tune', isMain ? 'hq' : 'll',
         '-profile:v', 'high', '-rc', 'vbr', '-b:v', bitrate, '-maxrate', bitrate,
-        '-bf', '0', '-g', '26');
+        '-bufsize', bitrate, '-bf', '0', '-g', '26');
     } else {
       args.push('-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency',
         '-b:v', bitrate, '-bf', '0', '-g', '26');

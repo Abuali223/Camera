@@ -233,7 +233,17 @@ class RealStream {
     try {
       this.player = mpegts.createPlayer(
         { type: 'mpegts', isLive: true, url },
-        { liveBufferLatencyChasing: true, lazyLoad: false, enableStashBuffer: false, stashInitialSize: 128 }
+        {
+          // Silliq real-time: kichik bufer + kechikish 2.5s dan oshsa quvib yetadi.
+          // (juda tor bufer "qotib qolish"ga sabab bo'ladi — shuning uchun stash yoqilgan)
+          enableStashBuffer: true,
+          stashInitialSize: 384,
+          liveBufferLatencyChasing: true,
+          liveBufferLatencyMaxLatency: 2.5,
+          liveBufferLatencyMinRemain: 0.8,
+          lazyLoad: false,
+          autoCleanupSourceBuffer: true,
+        }
       );
       this.player.attachMediaElement(this.video);
       this.player.on(mpegts.Events.ERROR, () => this._onFail());
