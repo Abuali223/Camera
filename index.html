@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentinel AI — Video nazorat platformasi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css?v=c2891bb">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z' fill='%2331E0CE'/></svg>">
+</head>
+<body data-theme="dark">
+
+<!-- ===================== LOGIN ===================== -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-brand">
+    <div class="fx1"></div><div class="fx2"></div>
+    <div class="brand-row">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#08110F" stroke-width="1.8"><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z"/><circle cx="12" cy="11" r="2.4"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">SENTINEL<span> AI</span></div>
+        <div class="brand-sub">VIDEO NAZORAT PLATFORMASI</div>
+      </div>
+    </div>
+
+    <div class="radar-wrap">
+      <div class="radar">
+        <div class="ring" style="inset:0"></div>
+        <div class="ring" style="inset:34px"></div>
+        <div class="ring" style="inset:68px"></div>
+        <div class="sweep"></div>
+        <div class="dot" style="left:64%;top:34%;width:9px;height:9px;background:var(--hi);box-shadow:0 0 12px var(--hi)"></div>
+        <div class="dot" style="left:38%;top:60%;width:7px;height:7px;background:var(--med);box-shadow:0 0 10px var(--med)"></div>
+        <div class="dot" style="left:56%;top:70%;width:6px;height:6px;background:var(--accent);box-shadow:0 0 10px var(--accent)"></div>
+        <div class="dot" style="left:50%;top:50%;width:6px;height:6px;background:var(--accent);box-shadow:0 0 16px var(--accent);transform:translate(-50%,-50%)"></div>
+      </div>
+      <div class="login-tagline">
+        <h2>Sun'iy intellekt asosidagi<br>real vaqt xavfsizlik nazorati</h2>
+        <p>Har bir kamera oqimi tahlil qilinadi — shubhali harakatlar, ruxsatsiz kirish va xavfsizlik buzilishlari avtomatik aniqlanadi va bildiriladi.</p>
+      </div>
+    </div>
+
+    <div class="login-stats">
+      <span><b>10+</b> aniqlash moduli</span>
+      <span><b>24/7</b> monitoring</span>
+      <span><b>99.9%</b> ishlash vaqti</span>
+    </div>
+  </div>
+
+  <div class="login-form-panel">
+    <form class="login-form" id="loginForm">
+      <div class="login-kicker">TIZIMGA KIRISH</div>
+      <h1>Xush kelibsiz</h1>
+      <p class="sub">Nazorat markaziga kirish uchun hisobingizga kiring.</p>
+
+      <label class="field-label">Obyekt</label>
+      <div class="field">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--text-3)" stroke-width="1.6"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01"/></svg>
+        <select id="siteSelect">
+          <option>ZAVOD-07 · Ishlab chiqarish</option>
+          <option>OFIS-01 · Bosh bino</option>
+          <option>OMBOR-03 · Logistika</option>
+        </select>
+      </div>
+
+      <label class="field-label">Foydalanuvchi</label>
+      <div class="field">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--text-3)" stroke-width="1.6"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.4-3.5 4-5 7-5s5.6 1.5 7 5"/></svg>
+        <input id="userInput" type="text" value="operator.davron" autocomplete="username">
+      </div>
+
+      <label class="field-label">Parol</label>
+      <div class="field">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--text-3)" stroke-width="1.6"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+        <input id="passInput" type="password" value="demo12345" autocomplete="current-password">
+      </div>
+
+      <div class="login-row">
+        <span class="toggle"><span class="tr"></span>Meni eslab qol</span>
+        <a href="#">Parolni unutdingizmi?</a>
+      </div>
+
+      <button type="submit" class="btn-primary">
+        Nazorat markaziga kirish
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#08110F" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+
+      <div class="login-2fa">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="var(--low)" stroke-width="1.8"><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z"/><path d="M9 11.5l2 2 4-4"/></svg>
+        2FA himoyalangan · shifrlangan ulanish
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== APP SHELL ===================== -->
+<div id="appShell" class="shell hidden">
+
+  <header class="topbar">
+    <div class="brand-row">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#08110F" stroke-width="1.9"><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z"/><circle cx="12" cy="11" r="2.3"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">SENTINEL<span> AI</span></div>
+        <div class="brand-sub" id="siteLabel">ZAVOD-07 · ISHLAB CHIQARISH</div>
+      </div>
+    </div>
+
+    <div class="search-wrap">
+      <div class="searchbox">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="var(--text-3)" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.2-3.2"/></svg>
+        <input id="searchInput" placeholder="Kamera, zona yoki hodisa qidirish…">
+        <span class="kbd">⌘K</span>
+      </div>
+    </div>
+
+    <div class="ai-pill" id="aiPill"><span class="dot"></span><span id="aiPillText">AI FAOL</span></div>
+    <div class="clock" id="clock">--:--:--</div>
+    <div class="vsep"></div>
+
+    <button class="icon-btn" id="themeBtn" title="Rejim">
+      <svg id="moonIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 12.8A8.5 8.5 0 1111.2 3a6.6 6.6 0 009.8 9.8z"/></svg>
+      <svg id="sunIcon" class="hidden" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>
+    </button>
+
+    <button class="icon-btn" id="muteBtn" title="Sirena ovozi">
+      <svg id="volIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M11 5L6 9H2v6h4l5 4zM15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></svg>
+      <svg id="volOffIcon" class="hidden" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M11 5L6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6"/></svg>
+    </button>
+
+    <button class="icon-btn" id="bellBtn" title="Bildirishnomalar">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M10.5 21a2 2 0 003 0"/></svg>
+      <span class="badge" id="bellBadge">0</span>
+    </button>
+
+    <div class="user-chip">
+      <div class="avatar" id="avatarInitials">DO</div>
+      <div><div class="nm" id="userName">Davron O.</div><div class="rl">Operator</div></div>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <div class="nav-label">MONITORING</div>
+    <button class="nav-btn active" data-screen="live">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
+      <span class="txt">Jonli devor</span>
+    </button>
+    <button class="nav-btn" data-screen="alerts">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l9.5 16.5H2.5z"/><path d="M12 10v4M12 17h.01"/></svg>
+      <span class="txt">Signallar</span><span class="cnt" id="alertCount">0</span>
+    </button>
+    <button class="nav-btn" data-screen="analytics">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20V10M10 20V4M16 20v-7M4 20h16"/></svg>
+      <span class="txt">Analitika</span>
+    </button>
+    <button class="nav-btn" data-screen="detail">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></svg>
+      <span class="txt">Kamera batafsil</span>
+    </button>
+    <button class="nav-btn" data-screen="snapshots">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7l1.5-3h5L16 7"/><circle cx="12" cy="13" r="3.4"/></svg>
+      <span class="txt">Suratlar</span><span class="cnt" id="snapCount" style="background:var(--accent);color:#08110F">0</span>
+    </button>
+
+    <div class="nav-label mt">BOSHQARUV</div>
+    <button class="nav-btn" data-screen="cameras">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7l14-2 1.5 6-14 2z"/><path d="M11.5 10.5l1 3.5M4.5 13L3 20l11-1.5"/><circle cx="9" cy="8" r="1"/></svg>
+      <span class="txt">Kameralar</span>
+    </button>
+
+    <div style="margin-top:auto"></div>
+
+    <div class="sys-card">
+      <div class="row"><span>Tizim holati</span><span class="ok" id="sysHealth">SOG'LOM</span></div>
+      <div class="sys-grid">
+        <div><div class="v" id="sysCams">–/–</div><div class="l">Kameralar</div></div>
+        <div><div class="v ac" id="sysLatency">42<small>ms</small></div><div class="l">Kechikish</div></div>
+      </div>
+    </div>
+
+    <button class="nav-btn" id="logoutBtn">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      <span class="txt">Chiqish</span>
+    </button>
+  </aside>
+
+  <main class="main">
+    <!-- SCREEN: JONLI DEVOR -->
+    <section id="screen-live" class="screen">
+      <div class="screen-head">
+        <div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <h1>Jonli kuzatuv devori</h1>
+            <span class="live-pill"><span class="dot"></span>LIVE</span>
+          </div>
+          <div class="screen-sub" id="liveSummary">…</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px">
+          <div class="seg" id="gridSeg">
+            <button data-g="2" class="on">2×2</button>
+            <button data-g="3">3×3</button>
+            <button data-g="4">4×4</button>
+          </div>
+        </div>
+      </div>
+      <div class="live-layout">
+        <div class="cam-grid" id="camGrid"></div>
+        <div class="panel">
+          <div class="panel-head"><span class="t">Jonli hodisalar</span><span class="s">SO'NGGI</span></div>
+          <div class="rail-list" id="eventRail"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN: SIGNALLAR -->
+    <section id="screen-alerts" class="screen hidden">
+      <div class="screen-head">
+        <div>
+          <h1>Signallar va ogohlantirishlar</h1>
+          <div class="screen-sub" id="alertsSummary">…</div>
+        </div>
+        <div style="display:flex;gap:7px;align-items:center" id="alertFilters">
+          <button class="filter-btn on" data-f="all">Barchasi</button>
+          <button class="filter-btn" data-f="high" style="color:var(--hi)">Yuqori</button>
+          <button class="filter-btn" data-f="med" style="color:var(--med)">O'rta</button>
+          <button class="filter-btn" data-f="low" style="color:var(--low)">Past</button>
+        </div>
+      </div>
+      <div class="alerts-layout">
+        <div class="panel" id="alertList"></div>
+        <div class="panel alert-detail" id="alertDetail"></div>
+      </div>
+    </section>
+
+    <!-- SCREEN: ANALITIKA -->
+    <section id="screen-analytics" class="screen hidden">
+      <div class="screen-head">
+        <div>
+          <h1>Analitika paneli</h1>
+          <div class="screen-sub">So'nggi 24 soat · avtomatik yangilanadi</div>
+        </div>
+        <div class="seg"><button class="on">24s</button><button>7k</button><button>30k</button></div>
+      </div>
+      <div class="kpi-grid" id="kpiGrid"></div>
+      <div class="chart-row">
+        <div class="chart-card">
+          <div class="head"><span class="t">Signallar dinamikasi</span><span class="s">soatlar bo'yicha</span></div>
+          <div class="bars" id="hourBars"></div>
+        </div>
+        <div class="chart-card">
+          <div class="head"><span class="t">Aniqlash turlari</span><span class="s" id="typesTotal">0 jami</span></div>
+          <div class="hbar-list" id="typeBars"></div>
+        </div>
+      </div>
+      <div class="chart-row2">
+        <div class="chart-card">
+          <div class="head"><span class="t">Zonalar bo'yicha</span></div>
+          <div class="hbar-list" id="zoneBars"></div>
+        </div>
+        <div class="chart-card">
+          <div class="head"><span class="t">Haftalik tendensiya</span><span class="s" style="color:var(--low)">▼ 8% kamaydi</span></div>
+          <svg viewBox="0 0 520 180" width="100%" height="180" preserveAspectRatio="none">
+            <defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#31E0CE" stop-opacity="0.35"/><stop offset="1" stop-color="#31E0CE" stop-opacity="0"/></linearGradient></defs>
+            <line x1="0" y1="45" x2="520" y2="45" stroke="var(--line)"/><line x1="0" y1="90" x2="520" y2="90" stroke="var(--line)"/><line x1="0" y1="135" x2="520" y2="135" stroke="var(--line)"/>
+            <path d="M0,120 L74,95 L148,110 L222,60 L296,80 L370,50 L444,70 L520,40 L520,180 L0,180 Z" fill="url(#tg)"/>
+            <path d="M0,120 L74,95 L148,110 L222,60 L296,80 L370,50 L444,70 L520,40" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="370" cy="50" r="4" fill="var(--accent)"/><circle cx="520" cy="40" r="4" fill="var(--accent)"/>
+          </svg>
+          <div class="week-labels"><span>Du</span><span>Se</span><span>Ch</span><span>Pa</span><span>Ju</span><span>Sh</span><span>Ya</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN: KAMERA BATAFSIL -->
+    <section id="screen-detail" class="screen hidden" >
+      <div id="detailContent"></div>
+    </section>
+
+    <!-- SCREEN: SURATLAR -->
+    <section id="screen-snapshots" class="screen hidden">
+      <div class="screen-head">
+        <div>
+          <h1>Olingan suratlar</h1>
+          <div class="screen-sub">Muhim daqiqalar arxivi — qo'lda va avtomatik olingan</div>
+        </div>
+      </div>
+      <div class="snap-grid" id="snapGrid"></div>
+      <div class="empty-note hidden" id="snapEmpty">Hozircha surat yo'q. Yordamchidan "rasmga ol" deb so'rang yoki kamera ustidagi 📷 tugmasini bosing.</div>
+    </section>
+
+    <!-- SCREEN: KAMERALAR -->
+    <section id="screen-cameras" class="screen hidden">
+      <div class="screen-head">
+        <div>
+          <h1>Kameralar boshqaruvi</h1>
+          <div class="screen-sub" id="camsSummary">…</div>
+        </div>
+        <button class="add-cam-btn" id="addCamBtn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#08110F" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Kamera qo'shish
+        </button>
+      </div>
+      <div class="cams-layout">
+        <div class="panel">
+          <div class="table-head"><span>KAMERA</span><span>ZONA</span><span>IP MANZIL</span><span>AI MODULLAR</span><span style="text-align:right">HOLAT</span></div>
+          <div id="camTable"></div>
+        </div>
+        <div class="map-card">
+          <div class="head" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <span style="font-weight:600;font-size:14px">Obyekt xaritasi</span>
+            <span class="s mono" style="font-size:10px;color:var(--text-3)">ZAVOD-07</span>
+          </div>
+          <div class="map-wrap">
+            <svg viewBox="0 0 320 260" width="100%" style="display:block" id="floorMap">
+              <rect x="14" y="14" width="292" height="232" rx="6" fill="none" stroke="var(--line-2)" stroke-width="1.5"/>
+              <line x1="14" y1="120" x2="180" y2="120" stroke="var(--line-2)" stroke-width="1.2"/>
+              <line x1="180" y1="14" x2="180" y2="246" stroke="var(--line-2)" stroke-width="1.2"/>
+              <line x1="180" y1="150" x2="306" y2="150" stroke="var(--line-2)" stroke-width="1.2"/>
+              <text x="95" y="70" fill="var(--text-3)" font-size="10" font-family="IBM Plex Mono" text-anchor="middle">SEX A</text>
+              <text x="95" y="188" fill="var(--text-3)" font-size="10" font-family="IBM Plex Mono" text-anchor="middle">OMBOR</text>
+              <text x="243" y="86" fill="var(--text-3)" font-size="10" font-family="IBM Plex Mono" text-anchor="middle">SEX B</text>
+              <text x="243" y="205" fill="var(--text-3)" font-size="10" font-family="IBM Plex Mono" text-anchor="middle">LOGISTIKA</text>
+              <g id="mapDots"></g>
+            </svg>
+          </div>
+          <div class="map-legend">
+            <span><span class="dot" style="background:var(--hi)"></span>Signal</span>
+            <span><span class="dot" style="background:var(--med)"></span>Ogohlantirish</span>
+            <span><span class="dot" style="background:var(--low)"></span>Normal</span>
+            <span><span class="dot" style="background:var(--text-3)"></span>Oflayn</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ===================== AI YORDAMCHI ===================== -->
+<button class="fab hidden" id="fabBtn" title="AI yordamchi">
+  <span class="ping"></span>
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#08110F" stroke-width="1.8"><path d="M12 3a7 7 0 017 7v1a7 7 0 01-7 7h-1l-4 3v-4a7 7 0 01-2-5v-2a7 7 0 017-7z"/><circle cx="9.5" cy="11" r="1" fill="#08110F"/><circle cx="14.5" cy="11" r="1" fill="#08110F"/></svg>
+</button>
+
+<div class="assistant hidden" id="assistantPanel">
+  <div class="assistant-head">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#08110F" stroke-width="1.9"><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z"/><circle cx="12" cy="11" r="2.3"/></svg>
+    </div>
+    <div>
+      <div class="t">Sentinel yordamchi</div>
+      <div class="s" id="assistantStatus">Buyruq bering — matn yoki ovoz orqali</div>
+    </div>
+    <button class="x" id="assistantClose">✕</button>
+  </div>
+  <div class="chat-log" id="chatLog"></div>
+  <div class="chat-hints" id="chatHints">
+    <span class="hint">rasmga ol</span>
+    <span class="hint">holatni ayt</span>
+    <span class="hint">signallarni ko'rsat</span>
+    <span class="hint">sirena o'chir</span>
+    <span class="hint">kamera 1 ni och</span>
+  </div>
+  <div class="chat-input-row">
+    <button class="mic-btn" id="micBtn" title="Ovozli buyruq">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>
+    </button>
+    <input id="chatInput" placeholder="Buyruq yozing… (masalan: rasmga ol)">
+    <button class="send-btn" id="sendBtn">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#08110F" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>window.BUILD='c2891bb';</script>
+<script src="js/data.js?v=c2891bb"></script>
+<script src="js/stream.js?v=c2891bb"></script>
+<script src="js/detector.js?v=c2891bb"></script>
+<script src="js/app.js?v=c2891bb"></script>
+<script src="js/assistant.js?v=c2891bb"></script>
+</body>
+</html>
