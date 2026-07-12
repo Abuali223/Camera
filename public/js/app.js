@@ -232,6 +232,83 @@ const App = {
       if (this.screen === 'live') this.updateLiveOverlays();
       if (this.screen === 'detail') this.updateDetailOverlays();
     }, 900);
+    this.startOverlayLoop();
+  },
+
+  /** Ramka pozitsiyasini HAR KADRDA (60fps) jism bilan birga yangilaydi.
+   *  Yorliq/ishonch sekin (detektor) sikldan, pozitsiya esa jonli oqimdan olinadi —
+   *  shu tufayli ramka jismdan orqada qolmaydi. */
+  startOverlayLoop() {
+    if (this._overlayRunning) return;
+    this._overlayRunning = true;
+    const loop = () => {
+      if (this.loggedIn) {
+        if (this.screen === 'live') {
+          document.querySelectorAll('#camGrid .cam-tile').forEach((tile) => {
+            const cam = this.cameras.find((c) => c.id === tile.dataset.cam);
+            if (cam && cam.online) this._renderBoxes(tile.querySelector('.boxes'), this._liveDetections(cam), !this.demo);
+          });
+        } else if (this.screen === 'detail') {
+          const cam = this.cameras.find((c) => c.id === this.detailCam);
+          if (cam && cam.online) this._renderBoxes(document.getElementById('bigBoxes'), this._liveDetections(cam), !this.demo);
+        }
+      }
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  },
+
+  /** Ramka uchun ma'lumot: demo'da jonli pozitsiya + keshdagi yorliq; real'da kesh. */
+  _liveDetections(cam) {
+    const cached = this.detections.get(cam.id) || [];
+    const stream = this.streams.get(cam.id);
+    if (this.demo && stream && Array.isArray(stream.objects)) {
+      return stream.objects.map((o, i) => {
+        const c = cached[i] || {};
+        return {
+          kind: o.kind,
+          label: c.label || (o.kind === 'person' ? 'SHAXS' : 'AVTOMOBIL'),
+          conf: c.conf || o.conf || 90,
+          danger: !!c.danger,
+          x: o.x, y: o.y, w: o.w, h: o.h,
+        };
+      });
+    }
+    return cached;
+  },
+
+  /** Ramkalarni DOM elementlarini qayta ishlatib chizadi (innerHTML qayta qurmaydi) —
+   *  shu tufayli pozitsiya silliq yangilanadi. smooth=true bo'lsa CSS o'tish qo'shiladi. */
+  _renderBoxes(container, dets, smooth) {
+    if (!container) return;
+    const boxes = container._boxes || (container._boxes = []);
+    while (boxes.length < dets.length) {
+      const el = document.createElement('div');
+      el.className = 'det-box';
+      const lbl = document.createElement('span');
+      lbl.className = 'lbl';
+      el.appendChild(lbl);
+      container.appendChild(el);
+      boxes.push(el);
+    }
+    while (boxes.length > dets.length) {
+      const el = boxes.pop();
+      if (el.parentNode) el.parentNode.removeChild(el);
+    }
+    for (let i = 0; i < dets.length; i++) {
+      const d = dets[i], el = boxes[i];
+      const color = d.danger ? 'var(--hi)' : d.kind === 'person' ? 'var(--med)' : 'var(--accent-2)';
+      el.classList.toggle('smooth', !!smooth);
+      el.style.left = (d.x * 100).toFixed(2) + '%';
+      el.style.top = (d.y * 100).toFixed(2) + '%';
+      el.style.width = (d.w * 100).toFixed(2) + '%';
+      el.style.height = (d.h * 100).toFixed(2) + '%';
+      el.style.borderColor = color;
+      el.style.color = color;
+      const lbl = el.firstChild;
+      lbl.style.background = color;
+      lbl.textContent = `${d.label} · ${d.conf}%`;
+    }
   },
 
   _canAlert(camId) {
@@ -516,14 +593,7 @@ const App = {
       const cam = this.cameras.find((c) => c.id === camId);
       if (!cam || !cam.online) return;
       const dets = this.detections.get(camId) || [];
-      const boxes = tile.querySelector('.boxes');
-      if (boxes) {
-        boxes.innerHTML = dets.map((d) => {
-          const color = d.danger ? 'var(--hi)' : d.kind === 'person' ? 'var(--med)' : 'var(--accent-2)';
-          return `<div class="det-box" style="left:${d.x * 100}%;top:${d.y * 100}%;width:${d.w * 100}%;height:${d.h * 100}%;border-color:${color};color:${color}">
-            <span class="lbl" style="background:${color}">${d.label} · ${d.conf}%</span></div>`;
-        }).join('');
-      }
+      // Eslatma: ramkalar (.boxes) endi startOverlayLoop() da har kadrda chiziladi.
       const ts = tile.querySelector('.cam-ts');
       if (ts) ts.textContent = this.nowStr();
       const chipwrap = tile.querySelector('.chipwrap');
@@ -821,14 +891,7 @@ const App = {
     const camId = this.detailCam;
     if (!camId) return;
     const dets = this.detections.get(camId) || [];
-    const boxes = document.getElementById('bigBoxes');
-    if (boxes) {
-      boxes.innerHTML = dets.map((d) => {
-        const color = d.danger ? 'var(--hi)' : d.kind === 'person' ? 'var(--med)' : 'var(--accent-2)';
-        return `<div class="det-box" style="left:${d.x * 100}%;top:${d.y * 100}%;width:${d.w * 100}%;height:${d.h * 100}%;border-color:${color};color:${color}">
-          <span class="lbl" style="background:${color}">${d.label} · ${d.conf}%</span></div>`;
-      }).join('');
-    }
+    // Eslatma: ramkalar (#bigBoxes) endi startOverlayLoop() da har kadrda chiziladi.
     const ts = document.getElementById('bigTs');
     if (ts) ts.textContent = new Date().toLocaleDateString('uz-UZ') + ' ' + this.nowStr();
     const objList = document.getElementById('objList');

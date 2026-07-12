@@ -139,7 +139,9 @@ button{font-family:inherit}
 .cam-tile canvas.feed{position:absolute;inset:0;width:100%;height:100%;display:block}
 .cam-tile .vign{position:absolute;inset:0;box-shadow:inset 0 0 70px 8px rgba(0,0,0,.65);pointer-events:none}
 .cam-tile .scanline{position:absolute;left:0;right:0;height:56px;background:linear-gradient(180deg,transparent,rgba(49,224,206,.06),transparent);animation:scan 5s linear infinite;pointer-events:none}
-.det-box{position:absolute;border:2px solid;border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.5),0 0 14px -2px currentColor;pointer-events:none}
+.det-box{position:absolute;border:2px solid;border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.5),0 0 14px -2px currentColor;pointer-events:none;will-change:left,top,width,height}
+/* real rejimda aniqlash sekinroq — ramka jism sari silliq suzib boradi */
+.det-box.smooth{transition:left .28s linear,top .28s linear,width .28s linear,height .28s linear}
 .det-box .lbl{position:absolute;top:-19px;left:-2px;color:#08110F;font:600 9.5px/1.7 var(--mono);padding:1px 6px;border-radius:3px;white-space:nowrap}
 .cam-top{position:absolute;top:9px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none}
 .cam-top .idz{text-shadow:0 1px 3px #000}

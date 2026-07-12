@@ -60,7 +60,7 @@ const Detector = {
       return (stream.objects || []).map((o) => ({
         kind: o.kind,
         label: o.kind === 'person' ? 'SHAXS' : 'AVTOMOBIL',
-        conf: 88 + Math.floor(Math.random() * 11),
+        conf: o.conf || 88 + Math.floor(Math.random() * 11),
         x: o.x, y: o.y, w: o.w, h: o.h,
         danger: o.kind === 'person' && cam.restricted,
       }));

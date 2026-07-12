@@ -30,10 +30,11 @@ class DemoScene {
       actors.push({
         kind: 'person', x: rnd(0.15, 0.8), y: rnd(0.45, 0.7),
         vx: rnd(-0.0012, 0.0012) || 0.0008, sz: rnd(0.09, 0.13), phase: rnd(0, 6),
+        conf: Math.round(rnd(88, 98)), // barqaror ishonch (pirpiramasligi uchun)
       });
     }
     if (this.cam.scene === 'parking' || this.cam.scene === 'loading') {
-      actors.push({ kind: 'car', x: rnd(0.2, 0.6), y: 0.68, vx: 0.0003, sz: 0.2, phase: 0 });
+      actors.push({ kind: 'car', x: rnd(0.2, 0.6), y: 0.68, vx: 0.0003, sz: 0.2, phase: 0, conf: Math.round(rnd(84, 95)) });
     }
     return actors;
   }
@@ -145,7 +146,7 @@ class DemoScene {
         const leg = Math.sin(t * 0.15 + a.phase) * s * 0.18;
         ctx.fillRect(px - s * 0.18 + leg, py + s * 0.2, s * 0.13, s * 0.5);
         ctx.fillRect(px + s * 0.05 - leg, py + s * 0.2, s * 0.13, s * 0.5);
-        this.objects.push({ kind: 'person', x: a.x - a.sz * 0.35, y: a.y - a.sz * 1.35, w: a.sz * 0.75, h: a.sz * 2.1 });
+        this.objects.push({ kind: 'person', x: a.x - a.sz * 0.35, y: a.y - a.sz * 1.35, w: a.sz * 0.75, h: a.sz * 2.1, conf: a.conf });
       } else {
         const px = a.x * W, py = a.y * H, s = a.sz * W;
         ctx.fillStyle = 'rgba(22,32,44,0.95)';
@@ -158,7 +159,7 @@ class DemoScene {
         ctx.fillStyle = 'rgba(140,180,220,0.5)';
         ctx.beginPath(); ctx.arc(px + s * 0.15, py + 2, s * 0.07, 0, 7); ctx.fill();
         ctx.beginPath(); ctx.arc(px + s * 0.82, py + 2, s * 0.07, 0, 7); ctx.fill();
-        this.objects.push({ kind: 'car', x: a.x, y: a.y - a.sz * 0.28, w: a.sz, h: a.sz * 0.42 });
+        this.objects.push({ kind: 'car', x: a.x, y: a.y - a.sz * 0.28, w: a.sz, h: a.sz * 0.42, conf: a.conf });
       }
     }
 
