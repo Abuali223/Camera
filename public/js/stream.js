@@ -15,6 +15,7 @@ class DemoScene {
     this.canvas.width = CAM_W;
     this.canvas.height = CAM_H;
     this.canvas.className = 'feed';
+    this.el = this.canvas; // tile'ga qo'yiladigan element
     this.ctx = this.canvas.getContext('2d');
     this.t = idx * 137; // har kamera har xil fazada
     this.objects = []; // {kind:'person'|'car', x,y,w,h (0..1)}
@@ -38,6 +39,8 @@ class DemoScene {
     }
     return actors;
   }
+
+  grab() {} // demo: canvas o'zi chiziladi, kerak emas
 
   start() {
     if (this.running) return;
@@ -179,47 +182,121 @@ class DemoScene {
 }
 
 /* ------------------------------------------------ REAL oqim (WS MJPEG) */
+// mpegts.js kutubxonasini bir marta yuklaydi (H.264 ni past kechikish bilan o'ynaydi)
+let _mpegtsPromise = null;
+function ensureMpegts() {
+  if (window.mpegts) return Promise.resolve();
+  if (_mpegtsPromise) return _mpegtsPromise;
+  _mpegtsPromise = new Promise((res) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.js';
+    s.onload = res;
+    s.onerror = () => res(); // yuklanmasa — MJPEG zaxira ishlaydi
+    document.head.appendChild(s);
+  });
+  return _mpegtsPromise;
+}
+
+/* --------------------------------- REAL oqim: HEVC->H.264 (server) -> <video> */
 class RealStream {
-  constructor(cam) {
+  constructor(cam, quality) {
     this.cam = cam;
+    this.quality = quality || 'sub'; // 'sub' — jonli devor, 'main' — 8MP batafsil
+    this.video = document.createElement('video');
+    this.video.className = 'feed';
+    this.video.muted = true;
+    this.video.autoplay = true;
+    this.video.playsInline = true;
+    this.video.setAttribute('muted', '');
+    this.video.setAttribute('playsinline', '');
+    this.el = this.video; // tile'ga qo'yiladigan element
+    // AI aniqlash uchun yashirin canvas (video kadri shu yerga chiziladi)
     this.canvas = document.createElement('canvas');
     this.canvas.width = CAM_W;
     this.canvas.height = CAM_H;
-    this.canvas.className = 'feed';
     this.ctx = this.canvas.getContext('2d');
-    this.objects = []; // real rejimda detector.js to'ldiradi
+    this.objects = [];
     this.running = false;
-    this.connected = false;
+    this.mode = 'ts';
   }
 
   start() {
     if (this.running) return;
     this.running = true;
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    this.ws = new WebSocket(`${proto}://${location.host}/stream/${encodeURIComponent(this.cam.id)}`);
+    this._startTs();
+  }
+
+  async _startTs() {
+    await ensureMpegts();
+    if (!window.mpegts || !mpegts.isSupported()) return this._startMjpeg();
+    const url = this._wsUrl('ts');
+    try {
+      this.player = mpegts.createPlayer(
+        { type: 'mpegts', isLive: true, url },
+        { liveBufferLatencyChasing: true, lazyLoad: false, enableStashBuffer: false, stashInitialSize: 128 }
+      );
+      this.player.attachMediaElement(this.video);
+      this.player.on(mpegts.Events.ERROR, () => this._onFail());
+      this.player.load();
+      this.video.play().catch(() => {});
+    } catch {
+      this._startMjpeg();
+    }
+  }
+
+  // MJPEG zaxira (mpegts ishlamasa)
+  _startMjpeg() {
+    this.mode = 'mjpeg';
+    // video o'rniga canvas ko'rsatiladi
+    this.el = this.canvas;
+    const tile = this.video.parentNode;
+    if (tile) tile.replaceChild(this.canvas, this.video);
+    this.ws = new WebSocket(this._wsUrl('mjpeg'));
     this.ws.binaryType = 'blob';
     this.ws.onmessage = async (ev) => {
       if (typeof ev.data === 'string') return;
-      this.connected = true;
       const bmp = await createImageBitmap(ev.data).catch(() => null);
       if (!bmp) return;
       this.ctx.drawImage(bmp, 0, 0, CAM_W, CAM_H);
       bmp.close();
     };
-    this.ws.onclose = () => {
-      this.connected = false;
-      if (this.running) this._retry = setTimeout(() => this.start(), 4000);
-      this.running = false;
-    };
+    this.ws.onclose = () => { if (this.running) this._retry = setTimeout(() => { this.ws = null; this._startMjpeg(); }, 4000); };
+  }
+
+  _wsUrl(fmt) {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    return `${proto}://${location.host}/stream/${encodeURIComponent(this.cam.id)}?q=${this.quality}&fmt=${fmt}`;
+  }
+
+  _onFail() {
+    if (!this.running) return;
+    this._destroyPlayer();
+    this._retry = setTimeout(() => { if (this.running) this._startTs(); }, 4000);
+  }
+
+  // AI aniqlash uchun joriy video kadrini canvasga chizadi
+  grab() {
+    if (this.mode !== 'ts') return; // MJPEG'da canvas allaqachon to'ladi
+    if (this.video.readyState >= 2 && this.video.videoWidth) {
+      try { this.ctx.drawImage(this.video, 0, 0, CAM_W, CAM_H); } catch {}
+    }
+  }
+
+  _destroyPlayer() {
+    if (this.player) {
+      try { this.player.destroy(); } catch {}
+      this.player = null;
+    }
   }
 
   stop() {
     this.running = false;
     clearTimeout(this._retry);
+    this._destroyPlayer();
     if (this.ws) try { this.ws.close(); } catch {}
   }
 }
 
-function createStream(cam, idx, demo) {
-  return demo ? new DemoScene(cam, idx) : new RealStream(cam);
+function createStream(cam, idx, demo, quality) {
+  return demo ? new DemoScene(cam, idx) : new RealStream(cam, quality);
 }

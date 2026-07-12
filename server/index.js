@@ -182,85 +182,104 @@ function isapiRequest(cam, method, uri, body, cb) {
 }
 
 // ---------------------------------------------------- RTSP → MJPEG oqimlari
-/** Har kamera uchun bitta ffmpeg jarayoni; frame'lar barcha ws mijozlarga tarqatiladi. */
-const streams = new Map(); // camId -> { proc, clients:Set, buf }
-
-function startStream(cam) {
-  if (streams.has(cam.id)) return streams.get(cam.id);
-
-  const entry = { proc: null, clients: new Set(), buf: Buffer.alloc(0) };
-  streams.set(cam.id, entry);
-
-  // Yengil rejim: past kadr tezligi + kichraytirish → 8 kamera bir vaqtda ravon.
-  // config.stream orqali sozlanadi (fps, height, quality).
-  const st = config.stream || {};
-  const fps = st.fps || 6;
-  const height = st.height || 480;
-  const quality = st.quality || 8;
-  const args = [
-    '-rtsp_transport', 'tcp',
-    '-i', rtspUrl(cam),
-    '-f', 'mjpeg',
-    '-vf', `fps=${fps},scale=-2:${height}`,
-    '-q:v', String(quality),
-    '-an',
-    'pipe:1',
-  ];
-  console.log(`[stream] ${cam.id} uchun ffmpeg ishga tushmoqda`);
-  const proc = spawn(FFMPEG, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-  entry.proc = proc;
-
-  proc.on('error', (e) => {
-    console.error(`[stream] ${cam.id} ffmpeg ISHGA TUSHMADI: ${e.code === 'ENOENT' ? "ffmpeg topilmadi (o'rnatilganmi?)" : e.message}`);
-    for (const ws of entry.clients) {
-      try { ws.send(JSON.stringify({ error: 'ffmpeg topilmadi' })); } catch {}
-    }
-  });
-
-  proc.stdout.on('data', (chunk) => {
-    entry.buf = Buffer.concat([entry.buf, chunk]);
-    // JPEG kadrlarni SOI (FFD8) / EOI (FFD9) markerlar bo'yicha ajratamiz
-    let start;
-    while ((start = entry.buf.indexOf(Buffer.from([0xff, 0xd8]))) !== -1) {
-      const end = entry.buf.indexOf(Buffer.from([0xff, 0xd9]), start + 2);
-      if (end === -1) break;
-      const frame = entry.buf.subarray(start, end + 2);
-      entry.buf = entry.buf.subarray(end + 2);
-      for (const ws of entry.clients) {
-        if (ws.readyState === 1) ws.send(frame);
-      }
-    }
-    if (entry.buf.length > 4 * 1024 * 1024) entry.buf = Buffer.alloc(0);
-  });
-
-  let gotFrame = false;
-  const origPush = entry;
-  proc.stderr.on('data', (d) => {
-    const s = d.toString();
-    // muhim xatolarni konsolga chiqaramiz (parol/ulanish/kanal)
-    if (/401|Unauthorized|refused|timed out|timeout|not found|404|Invalid data|Connection/i.test(s)) {
-      const line = s.split('\n').find((l) => /401|Unauthorized|refused|timed out|timeout|not found|404|Invalid data|Connection/i.test(l));
-      if (line) console.error(`[stream] ${cam.id}: ${line.trim().slice(0, 160)}`);
-    }
-  });
-  proc.stdout.once('data', () => { gotFrame = true; console.log(`[stream] ${cam.id}: video oqim keldi ✓`); });
-  proc.on('close', (code) => {
-    if (!gotFrame) console.error(`[stream] ${cam.id}: video kelmadi (kod ${code}) — parol/RTSP/kanalni tekshiring`);
-    else console.log(`[stream] ${cam.id} ffmpeg yopildi (kod ${code})`);
-    streams.delete(cam.id);
-    for (const ws of entry.clients) {
-      try { ws.close(); } catch {}
-    }
-  });
-  return entry;
+// Kamera kanalini hisoblash: main = baza*100+1 (to'liq 8MP), sub = baza*100+2 (yengil)
+function channelFor(cam, quality) {
+  const base = Math.floor((cam.channel || 101) / 100) || 1;
+  return quality === 'main' ? base * 100 + 1 : base * 100 + 2;
+}
+function rtspUrlCh(cam, ch) {
+  return `rtsp://${encodeURIComponent(cam.user)}:${encodeURIComponent(cam.password)}@${cam.ip}:${cam.port || 554}/Streaming/Channels/${ch}`;
 }
 
-function stopStreamIfIdle(camId) {
-  const entry = streams.get(camId);
-  if (entry && entry.clients.size === 0 && entry.proc) {
-    entry.proc.kill('SIGTERM');
-    streams.delete(camId);
-  }
+/** Har WebSocket ulanishi uchun alohida ffmpeg.
+ *  H.265 (HEVC) -> H.264 ni NVIDIA (RTX) video kartasi orqali o'giradi (tez, past CPU),
+ *  natijani MPEG-TS ko'rinishida uzatadi (brauzerda mpegts.js o'ynaydi).
+ *  GPU ishlamasa CPU (libx264) ga o'tadi. */
+function startTsStream(ws, cam, quality) {
+  const st = config.stream || {};
+  const ch = channelFor(cam, quality);
+  const url = rtspUrlCh(cam, ch);
+  const useGpu = st.gpu !== false; // standart: RTX video kartasi
+  const bitrate = quality === 'main' ? (st.mainBitrate || '10M') : (st.subBitrate || '1500k');
+
+  const spawnFf = (gpu) => {
+    const args = ['-rtsp_transport', 'tcp', '-fflags', 'nobuffer', '-flags', 'low_delay'];
+    if (gpu) args.push('-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda');
+    args.push('-i', url, '-an');
+    if (gpu) {
+      args.push('-c:v', 'h264_nvenc', '-preset', 'p4', '-tune', 'll',
+        '-profile:v', 'high', '-rc', 'vbr', '-b:v', bitrate, '-maxrate', bitrate,
+        '-bf', '0', '-g', '26');
+    } else {
+      args.push('-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency',
+        '-b:v', bitrate, '-bf', '0', '-g', '26');
+    }
+    args.push('-f', 'mpegts', '-flush_packets', '1', 'pipe:1');
+    return spawn(FFMPEG, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  };
+
+  let proc = spawnFf(useGpu);
+  let gotData = false;
+  let triedCpu = !useGpu;
+  const wire = (p) => {
+    p.stdout.on('data', (chunk) => {
+      if (!gotData) { gotData = true; console.log(`[stream] ${cam.id}/${quality}: oqim keldi ✓`); }
+      if (ws.readyState === 1) ws.send(chunk);
+    });
+    p.stderr.on('data', (d) => {
+      const s = d.toString();
+      if (/401|Unauthorized|refused|timed out|not found|Invalid data|Cannot load|No such|nvenc|Impossible|Error/i.test(s)) {
+        const line = s.split('\n').find((l) => l.trim());
+        if (line) console.error(`[stream] ${cam.id}/${quality}: ${line.trim().slice(0, 160)}`);
+      }
+    });
+    p.on('error', (e) => console.error(`[stream] ${cam.id} ffmpeg xato: ${e.message}`));
+    p.on('close', (code) => {
+      // GPU birinchi urinishда darhol yiqilса — CPU'ga o'tamiz
+      if (!gotData && !triedCpu) {
+        triedCpu = true;
+        console.warn(`[stream] ${cam.id}/${quality}: GPU ishlamadi, CPU (libx264) ga o'tildi`);
+        proc = spawnFf(false);
+        wire(proc);
+        ws._proc = proc;
+        return;
+      }
+      if (!gotData) {
+        console.error(`[stream] ${cam.id}/${quality}: video kelmadi (kod ${code})`);
+        try { if (ws.readyState === 1) ws.send(JSON.stringify({ error: 'stream_failed' })); } catch {}
+      }
+      try { if (ws.readyState === 1) ws.close(); } catch {}
+    });
+  };
+  wire(proc);
+  ws._proc = proc;
+  return proc;
+}
+
+/** Zaxira: MJPEG (mpegts.js ishlamasa yoki eski brauzerlar uchun). */
+function startMjpegStream(ws, cam, quality) {
+  const st = config.stream || {};
+  const ch = channelFor(cam, quality);
+  const height = quality === 'main' ? (st.mainHeight || 1080) : (st.subHeight || 360);
+  const args = ['-rtsp_transport', 'tcp', '-i', rtspUrlCh(cam, ch), '-f', 'mjpeg',
+    '-vf', `fps=${st.fps || 8},scale=-2:${height}`, '-q:v', String(st.quality || 5), '-an', 'pipe:1'];
+  const proc = spawn(FFMPEG, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  let buf = Buffer.alloc(0);
+  proc.stdout.on('data', (chunk) => {
+    buf = Buffer.concat([buf, chunk]);
+    let s;
+    while ((s = buf.indexOf(Buffer.from([0xff, 0xd8]))) !== -1) {
+      const e = buf.indexOf(Buffer.from([0xff, 0xd9]), s + 2);
+      if (e === -1) break;
+      const frame = buf.subarray(s, e + 2);
+      buf = buf.subarray(e + 2);
+      if (ws.readyState === 1) ws.send(frame);
+    }
+    if (buf.length > 8 * 1024 * 1024) buf = Buffer.alloc(0);
+  });
+  proc.stderr.on('data', () => {});
+  proc.on('close', () => { try { if (ws.readyState === 1) ws.close(); } catch {} });
+  return proc;
 }
 
 // ---------------------------------------------------- Gemini TTS (sifatli ovoz)
@@ -487,18 +506,19 @@ const server = http.createServer(async (req, res) => {
 // -------------------------------------------------------------- WebSocket
 const wss = new WebSocketServer({ server, path: undefined });
 wss.on('connection', (ws, req) => {
-  const m = req.url.match(/^\/stream\/([^/?]+)/);
+  const url = new URL(req.url, 'http://x');
+  const m = url.pathname.match(/^\/stream\/([^/?]+)/);
   if (!m) return ws.close();
   const cam = findCamera(decodeURIComponent(m[1]));
   if (!cam) {
     ws.send(JSON.stringify({ error: 'Kamera topilmadi yoki demo rejim' }));
     return ws.close();
   }
-  const entry = startStream(cam);
-  entry.clients.add(ws);
+  const quality = url.searchParams.get('q') === 'main' ? 'main' : 'sub';
+  const fmt = url.searchParams.get('fmt') === 'mjpeg' ? 'mjpeg' : 'ts';
+  const proc = fmt === 'mjpeg' ? startMjpegStream(ws, cam, quality) : startTsStream(ws, cam, quality);
   ws.on('close', () => {
-    entry.clients.delete(ws);
-    setTimeout(() => stopStreamIfIdle(cam.id), 5000);
+    try { (ws._proc || proc).kill('SIGTERM'); } catch {}
   });
 });
 

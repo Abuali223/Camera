@@ -168,7 +168,16 @@ const App = {
     document.getElementById('volOffIcon').classList.toggle('hidden', !this.muted);
   },
 
+  _stopDetailStream() {
+    if (this.detailStream) {
+      try { this.detailStream.stop(); } catch {}
+      this.detailStream = null;
+    }
+  },
+
   go(screen) {
+    // batafsil ko'rinishдан chiqganда 8MP asosiy oqimni to'xtatamiz (resursni tejash)
+    if (this.screen === 'detail' && screen !== 'detail') this._stopDetailStream();
     this.screen = screen;
     document.querySelectorAll('.nav-btn[data-screen]').forEach((b) =>
       b.classList.toggle('active', b.dataset.screen === screen)
@@ -472,10 +481,12 @@ const App = {
 
   // ---------------------------------------------------------- suratlar
   captureFrame(camId) {
-    const stream = this.streams.get(camId);
+    // batafsil ko'rinish ochiq bo'lsa — undan (8MP) suratga olamiz
+    let stream = (this.detailCam === camId && this._detailFeed) ? this._detailFeed : this.streams.get(camId);
     if (!stream || !stream.canvas) return null;
     try {
-      return stream.canvas.toDataURL('image/jpeg', 0.85);
+      if (stream.grab) stream.grab(); // joriy kadrni canvasga yangilaymiz
+      return stream.canvas.toDataURL('image/jpeg', 0.92);
     } catch {
       return null;
     }
@@ -559,11 +570,6 @@ const App = {
       tile.dataset.cam = cam.id;
       const stream = this.streams.get(cam.id);
 
-      if (cam.online && stream) {
-        tile.appendChild(stream.canvas.cloneNode ? stream.canvas : stream.canvas);
-        // canvas bitta bo'lgani uchun uni ko'chirmasdan joylaymiz — klonlash o'rniga live mirror
-      }
-
       tile.innerHTML += `
         <div class="vign"></div>
         ${cam.online ? '<div class="scanline"></div>' : ''}
@@ -585,8 +591,8 @@ const App = {
       `;
 
       if (cam.online && stream) {
-        // canvasni birinchi element sifatida qo'yamiz (innerHTML uni o'chirib yuborgan)
-        tile.insertBefore(stream.canvas, tile.firstChild);
+        // video/canvas elementini birinchi qilib qo'yamiz (innerHTML uni o'chirgan)
+        tile.insertBefore(stream.el, tile.firstChild);
       }
 
       tile.addEventListener('click', () => {
@@ -807,7 +813,7 @@ const App = {
         <button class="back-btn" id="backToLive"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M15 18l-6-6 6-6"/></svg></button>
         <div>
           <h1 style="margin:0;font-size:22px;font-weight:600">${cam.id} · ${cam.name}</h1>
-          <div style="margin-top:4px;font:500 12px var(--mono);color:var(--text-2)">${cam.zone} · ${cam.model || 'IP kamera'} · 4MP · 25 fps</div>
+          <div style="margin-top:4px;font:500 12px var(--mono);color:var(--text-2)">${cam.zone} · ${cam.model || 'IP kamera'} · 8MP · asosiy oqim</div>
         </div>
         <span style="margin-left:auto" class="live-pill"><span class="dot"></span>${cam.online ? 'LIVE · REC' : 'OFLAYN'}</span>
       </div>
@@ -868,8 +874,19 @@ const App = {
         </div>
       </div>`;
 
-    if (cam.online && stream) {
-      document.getElementById('bigFeed').insertBefore(stream.canvas, document.getElementById('bigFeed').firstChild);
+    // Batafsil ko'rinishда TO'LIQ 8MP asosiy oqim (raqamlar o'qiladi) — alohida stream.
+    // Demo rejimda esa mavjud demo stream'ni ishlatamiz.
+    if (cam.online) {
+      this._stopDetailStream();
+      let feedStream = stream;
+      if (!this.demo) {
+        feedStream = createStream(cam, 0, false, 'main');
+        feedStream.start();
+        this.detailStream = feedStream;
+      }
+      this._detailFeed = feedStream;
+      const bf = document.getElementById('bigFeed');
+      if (bf && feedStream) bf.insertBefore(feedStream.el, bf.firstChild);
     }
     document.getElementById('backToLive').addEventListener('click', () => this.go('live'));
     document.getElementById('snapBtn').addEventListener('click', (e) => {

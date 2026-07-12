@@ -136,7 +136,7 @@ button{font-family:inherit}
 .cam-grid.g3{grid-template-columns:repeat(3,1fr)}
 .cam-grid.g4{grid-template-columns:repeat(4,1fr)}
 .cam-tile{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:linear-gradient(180deg,#141d26,#080c11);cursor:pointer}
-.cam-tile canvas.feed{position:absolute;inset:0;width:100%;height:100%;display:block}
+.cam-tile canvas.feed,.cam-tile video.feed{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover;background:#0a0f14}
 .cam-tile .vign{position:absolute;inset:0;box-shadow:inset 0 0 70px 8px rgba(0,0,0,.65);pointer-events:none}
 .cam-tile .scanline{position:absolute;left:0;right:0;height:56px;background:linear-gradient(180deg,transparent,rgba(49,224,206,.06),transparent);animation:scan 5s linear infinite;pointer-events:none}
 .det-box{position:absolute;border:2px solid;border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.5),0 0 14px -2px currentColor;pointer-events:none;will-change:left,top,width,height}
@@ -240,7 +240,7 @@ button{font-family:inherit}
 .det-layout{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start}
 .back-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--text-2);cursor:pointer;display:flex;align-items:center;justify-content:center}
 .big-feed{position:relative;aspect-ratio:16/9;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:linear-gradient(180deg,#141d26,#070b0f)}
-.big-feed canvas.feed{position:absolute;inset:0;width:100%;height:100%}
+.big-feed canvas.feed,.big-feed video.feed{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#0a0f14}
 .ptz{position:absolute;bottom:12px;right:14px;display:flex;gap:6px}
 .ptz button{width:30px;height:30px;border-radius:7px;border:1px solid rgba(255,255,255,.15);background:rgba(8,12,16,.55);color:#cfe0ee;cursor:pointer;font-size:14px}
 .timeline-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:16px}

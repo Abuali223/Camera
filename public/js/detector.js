@@ -55,6 +55,7 @@ const Detector = {
 
   /** Bitta kamera oqimini tahlil qiladi. */
   async detect(stream, cam) {
+    if (stream.grab) stream.grab(); // real oqimda video kadrini canvasga oladi
     if (this.demo || !this.model) {
       // demo: sahna obyektlaridan foydalanish
       return (stream.objects || []).map((o) => ({
