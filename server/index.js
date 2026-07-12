@@ -24,6 +24,45 @@ const PORT = process.env.PORT || 8080;
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const CONFIG_PATH = path.join(__dirname, 'cameras.json');
 
+// ffmpeg'ni avtomatik topish — Windows'da PATH yangilanmagan bo'lsa ham ishlaydi.
+// winget (Gyan.FFmpeg) va boshqa keng tarqalgan joylarni tekshiradi.
+function findFfmpeg() {
+  const env = process.env;
+  const explicit = [
+    env.FFMPEG_PATH,
+    env.LOCALAPPDATA && path.join(env.LOCALAPPDATA, 'Microsoft', 'WinGet', 'Links', 'ffmpeg.exe'),
+    'C:\\ffmpeg\\bin\\ffmpeg.exe',
+    env.ProgramFiles && path.join(env.ProgramFiles, 'ffmpeg', 'bin', 'ffmpeg.exe'),
+  ].filter(Boolean);
+  for (const c of explicit) {
+    try { if (fs.existsSync(c)) return c; } catch {}
+  }
+  // winget Packages ichidan qidirish (portable o'rnatma)
+  try {
+    const base = env.LOCALAPPDATA && path.join(env.LOCALAPPDATA, 'Microsoft', 'WinGet', 'Packages');
+    if (base && fs.existsSync(base)) {
+      for (const dir of fs.readdirSync(base)) {
+        if (!/ffmpeg/i.test(dir)) continue;
+        const stack = [path.join(base, dir)];
+        let steps = 0;
+        while (stack.length && steps++ < 500) {
+          const d = stack.pop();
+          let entries = [];
+          try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { continue; }
+          for (const e of entries) {
+            const full = path.join(d, e.name);
+            if (e.isDirectory()) stack.push(full);
+            else if (e.name.toLowerCase() === 'ffmpeg.exe') return full;
+          }
+        }
+      }
+    }
+  } catch {}
+  return 'ffmpeg'; // PATH orqali (agar mavjud bo'lsa)
+}
+const FFMPEG = findFfmpeg();
+console.log('[ffmpeg] ishlatiladi:', FFMPEG);
+
 // ---------------------------------------------------------------- config
 function loadConfig() {
   try {
@@ -155,8 +194,15 @@ function startStream(cam) {
     'pipe:1',
   ];
   console.log(`[stream] ${cam.id} uchun ffmpeg ishga tushmoqda`);
-  const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  const proc = spawn(FFMPEG, args, { stdio: ['ignore', 'pipe', 'pipe'] });
   entry.proc = proc;
+
+  proc.on('error', (e) => {
+    console.error(`[stream] ${cam.id} ffmpeg ISHGA TUSHMADI: ${e.code === 'ENOENT' ? "ffmpeg topilmadi (o'rnatilganmi?)" : e.message}`);
+    for (const ws of entry.clients) {
+      try { ws.send(JSON.stringify({ error: 'ffmpeg topilmadi' })); } catch {}
+    }
+  });
 
   proc.stdout.on('data', (chunk) => {
     entry.buf = Buffer.concat([entry.buf, chunk]);
@@ -174,9 +220,20 @@ function startStream(cam) {
     if (entry.buf.length > 4 * 1024 * 1024) entry.buf = Buffer.alloc(0);
   });
 
-  proc.stderr.on('data', () => {});
+  let gotFrame = false;
+  const origPush = entry;
+  proc.stderr.on('data', (d) => {
+    const s = d.toString();
+    // muhim xatolarni konsolga chiqaramiz (parol/ulanish/kanal)
+    if (/401|Unauthorized|refused|timed out|timeout|not found|404|Invalid data|Connection/i.test(s)) {
+      const line = s.split('\n').find((l) => /401|Unauthorized|refused|timed out|timeout|not found|404|Invalid data|Connection/i.test(l));
+      if (line) console.error(`[stream] ${cam.id}: ${line.trim().slice(0, 160)}`);
+    }
+  });
+  proc.stdout.once('data', () => { gotFrame = true; console.log(`[stream] ${cam.id}: video oqim keldi ✓`); });
   proc.on('close', (code) => {
-    console.log(`[stream] ${cam.id} ffmpeg yopildi (kod ${code})`);
+    if (!gotFrame) console.error(`[stream] ${cam.id}: video kelmadi (kod ${code}) — parol/RTSP/kanalni tekshiring`);
+    else console.log(`[stream] ${cam.id} ffmpeg yopildi (kod ${code})`);
     streams.delete(cam.id);
     for (const ws of entry.clients) {
       try { ws.close(); } catch {}
