@@ -30,6 +30,10 @@ function findFfmpeg() {
   const env = process.env;
   const explicit = [
     env.FFMPEG_PATH,
+    // dastur papkasidagi ffmpeg.exe (eng ishonchli — PATH/winget kerak emas)
+    path.join(__dirname, '..', 'ffmpeg.exe'),
+    path.join(__dirname, 'ffmpeg.exe'),
+    path.join(__dirname, '..', 'ffmpeg', 'bin', 'ffmpeg.exe'),
     env.LOCALAPPDATA && path.join(env.LOCALAPPDATA, 'Microsoft', 'WinGet', 'Links', 'ffmpeg.exe'),
     'C:\\ffmpeg\\bin\\ffmpeg.exe',
     env.ProgramFiles && path.join(env.ProgramFiles, 'ffmpeg', 'bin', 'ffmpeg.exe'),
