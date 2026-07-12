@@ -218,6 +218,9 @@ class RealStream {
     this.objects = [];
     this.running = false;
     this.mode = 'ts';
+    this._fails = 0;
+    // muvaffaqiyatli o'ynay boshlasa — qayta urinish oralig'ini nolga tushiramiz
+    this.video.addEventListener('playing', () => { this._fails = 0; });
   }
 
   start() {
@@ -270,7 +273,7 @@ class RealStream {
       this.ctx.drawImage(bmp, 0, 0, CAM_W, CAM_H);
       bmp.close();
     };
-    this.ws.onclose = () => { if (this.running) this._retry = setTimeout(() => { this.ws = null; this._startMjpeg(); }, 4000); };
+    this.ws.onclose = () => { if (this.running) this._retry = setTimeout(() => { this.ws = null; this._startMjpeg(); }, this._backoff()); };
   }
 
   _wsUrl(fmt) {
@@ -278,10 +281,17 @@ class RealStream {
     return `${proto}://${location.host}/stream/${encodeURIComponent(this.cam.id)}?q=${this.quality}&fmt=${fmt}`;
   }
 
+  // Ishlamaydigan kamera (masalan sub-oqimsiz) log/resurs to'ldirmasligi uchun
+  // qayta urinish oralig'i asta-sekin oshadi: 4s, 8s, 16s ... 60s gacha.
+  _backoff() {
+    this._fails = (this._fails || 0) + 1;
+    return Math.min(4000 * this._fails, 60000);
+  }
+
   _onFail() {
     if (!this.running) return;
     this._destroyPlayer();
-    this._retry = setTimeout(() => { if (this.running) this._startTs(); }, 4000);
+    this._retry = setTimeout(() => { if (this.running) this._startTs(); }, this._backoff());
   }
 
   // AI aniqlash uchun joriy video kadrini canvasga chizadi

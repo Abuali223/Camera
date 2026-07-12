@@ -22,11 +22,20 @@ Interfeys to'liq o'zbek tilida, tungi/kunduzgi rejim mavjud.
 
 Talablar: [Node.js 18+](https://nodejs.org) va real kameralar uchun [ffmpeg](https://ffmpeg.org).
 
+**Bitta buyruq** (IDE terminalida — Antigravity/VS Code) — o'rnatadi, ishga tushiradi
+va brauzerni avtomatik ochadi:
+
 ```bash
-npm install
-npm start
-# brauzerda oching: http://localhost:8080
+npm run go
 ```
+
+Keyingi safar (paketlar allaqachon o'rnatilgan bo'lsa) qisqasi ham yetadi:
+
+```bash
+npm start
+```
+
+Brauzer o'zi ochilmasa: http://localhost:8080
 
 `server/cameras.json` fayli bo'lmasa dastur **DEMO rejimda** ishlaydi — simulyatsiya
 qilingan 8 kamera bilan barcha funksiyalarni sinab ko'rishingiz mumkin.

@@ -204,10 +204,11 @@ function startTsStream(ws, cam, quality) {
   // Asosiy (8MP) — yuqori bitrate (raqamlar o'qiladi); sub — yengil
   const bitrate = isMain ? (st.mainBitrate || '16M') : (st.subBitrate || '2500k');
 
+  let curUrl = url;
   const spawnFf = (gpu) => {
     const args = ['-rtsp_transport', 'tcp', '-fflags', 'nobuffer', '-flags', 'low_delay'];
     if (gpu) args.push('-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda');
-    args.push('-i', url, '-an');
+    args.push('-i', curUrl, '-an');
     if (gpu) {
       // asosiy oqim — sifat (p5/hq), sub — past kechikish (p4/ll)
       args.push('-c:v', 'h264_nvenc',
@@ -225,6 +226,7 @@ function startTsStream(ws, cam, quality) {
   let proc = spawnFf(useGpu);
   let gotData = false;
   let triedCpu = !useGpu;
+  let triedMainCh = quality !== 'sub'; // sub'da 404 bo'lsa asosiy kanalga o'tamiz
   const wire = (p) => {
     p.stdout.on('data', (chunk) => {
       if (!gotData) { gotData = true; console.log(`[stream] ${cam.id}/${quality}: oqim keldi ✓`); }
@@ -244,6 +246,17 @@ function startTsStream(ws, cam, quality) {
         triedCpu = true;
         console.warn(`[stream] ${cam.id}/${quality}: GPU ishlamadi, CPU (libx264) ga o'tildi`);
         proc = spawnFf(false);
+        wire(proc);
+        ws._proc = proc;
+        return;
+      }
+      // Sub-oqim yo'q kamera (404) — asosiy kanalga o'tamiz, uzilib qolmasin
+      if (!gotData && !triedMainCh) {
+        triedMainCh = true;
+        curUrl = rtspUrlCh(cam, channelFor(cam, 'main'));
+        console.warn(`[stream] ${cam.id}/${quality}: sub-oqim yo'q, asosiy kanalga o'tildi`);
+        triedCpu = !useGpu;
+        proc = spawnFf(useGpu);
         wire(proc);
         ws._proc = proc;
         return;
@@ -532,4 +545,13 @@ server.listen(PORT, () => {
   console.log(`║  http://localhost:${PORT}                            ║`);
   console.log(`║  Rejim: ${config.demo ? 'DEMO (cameras.json topilmadi)      ' : 'REAL — ' + config.cameras.length + ' kamera ulangan        '}  ║`);
   console.log('╚══════════════════════════════════════════════════╝');
+  // Brauzerni avtomatik ochamiz — foydalanuvchi qo'lda manzil yozmasin.
+  // NO_OPEN=1 bo'lsa ochilmaydi (masalan server rejimida).
+  if (!process.env.NO_OPEN) {
+    const url = `http://localhost:${PORT}`;
+    const cmd = process.platform === 'win32' ? `start "" "${url}"`
+      : process.platform === 'darwin' ? `open "${url}"`
+      : `xdg-open "${url}"`;
+    try { require('child_process').exec(cmd); } catch {}
+  }
 });
