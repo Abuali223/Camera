@@ -5,7 +5,8 @@
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
-    "dev": "node server/index.js"
+    "dev": "node server/index.js",
+    "go": "npm install && node server/index.js"
   },
   "engines": {
     "node": ">=18"
