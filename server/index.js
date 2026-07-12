@@ -70,7 +70,10 @@ console.log('[ffmpeg] ishlatiladi:', FFMPEG);
 // ---------------------------------------------------------------- config
 function loadConfig() {
   try {
-    const raw = fs.readFileSync(CONFIG_PATH, 'utf8');
+    let raw = fs.readFileSync(CONFIG_PATH, 'utf8');
+    // Windows tahrirlagichlari qo'shadigan BOM belgisini olib tashlaymiz —
+    // aks holda JSON.parse xato beradi va dastur noto'g'ri DEMO'ga o'tadi.
+    if (raw.charCodeAt(0) === 0xfeff) raw = raw.slice(1);
     const cfg = JSON.parse(raw);
     // NVR/umumiy sozlamalarni har kameraga qo'llash — parol/IP bir joyda yoziladi,
     // har kamera faqat o'z kanalini (channel) ko'rsatadi.
