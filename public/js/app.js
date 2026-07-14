@@ -92,9 +92,9 @@ const App = {
   bindUi() {
     document.getElementById('loginForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      this.login();
+      Session.submit();
     });
-    document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
+    document.getElementById('logoutBtn').addEventListener('click', () => Session.logout());
     document.getElementById('themeBtn').addEventListener('click', () => this.toggleTheme());
     document.getElementById('muteBtn').addEventListener('click', () => this.toggleMute());
     document.querySelectorAll('.nav-btn[data-screen]').forEach((b) => {
@@ -127,8 +127,9 @@ const App = {
     });
   },
 
-  login() {
-    const user = document.getElementById('userInput').value.trim() || 'operator';
+  /** Login/token muvaffaqiyatli bo'lgach ilova ichkarisini ochadi (Session chaqiradi) */
+  enterApp(username) {
+    const user = username || (document.getElementById('userInput').value.trim() || 'operator');
     const site = document.getElementById('siteSelect').value;
     document.getElementById('userName').textContent = user.split('.').map((s) => s[0]?.toUpperCase() + s.slice(1)).join(' ');
     document.getElementById('avatarInitials').textContent = user.slice(0, 2).toUpperCase();
@@ -144,10 +145,20 @@ const App = {
         Notification.requestPermission();
       }
     }
+    // Video oqimlari login'dan oldin (tokensiz) ochilgan bo'lsa — token bilan
+    // darhol qayta ulaymiz, aks holda kameralar 4-8s kech ko'rinardi.
+    if (!this.demo && window.Session && Session.token) this.reconnectStreams();
     Assistant.say(`Xush kelibsiz, ${user}! Tizim nazorat ostida. Menga buyruq berishingiz mumkin — masalan "holatni ayt" yoki "rasmga ol".`, false);
   },
 
-  logout() {
+  reconnectStreams() {
+    this.streams.forEach((s) => {
+      if (s.stop && s.start) { s.stop(); s._fails = 0; s.start(); }
+    });
+  },
+
+  /** Chiqish UI qismi (Session tokenni tozalab, buni chaqiradi) */
+  doLogoutUi() {
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('appShell').classList.add('hidden');
     document.getElementById('fabBtn').classList.add('hidden');
@@ -1034,4 +1045,7 @@ const App = {
   },
 };
 
-window.addEventListener('DOMContentLoaded', () => App.init());
+window.addEventListener('DOMContentLoaded', async () => {
+  await App.init();
+  Session.boot(); // login holatini tekshiradi: token bo'lsa to'g'ridan-to'g'ri kiradi
+});

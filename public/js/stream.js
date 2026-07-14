@@ -278,7 +278,9 @@ class RealStream {
 
   _wsUrl(fmt) {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    return `${proto}://${location.host}/stream/${encodeURIComponent(this.cam.id)}?q=${this.quality}&fmt=${fmt}`;
+    // token ?t= orqali — WebSocket brauzerda Authorization sarlavhasini yubora olmaydi
+    const tok = (window.Session && Session.token) ? `&t=${encodeURIComponent(Session.token)}` : '';
+    return `${proto}://${location.host}/stream/${encodeURIComponent(this.cam.id)}?q=${this.quality}&fmt=${fmt}${tok}`;
   }
 
   // Ishlamaydigan kamera (masalan sub-oqimsiz) log/resurs to'ldirmasligi uchun

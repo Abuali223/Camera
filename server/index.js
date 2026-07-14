@@ -19,6 +19,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { WebSocketServer } = require('ws');
+const auth = require('./auth');
 
 const PORT = process.env.PORT || 8080;
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
@@ -346,6 +347,15 @@ function sendJson(res, code, obj) {
   res.end(body);
 }
 
+// Maxfiy endpoint himoyasi — faqat kirgan (tokenli) foydalanuvchi.
+// Hali parol o'rnatilmagan bo'lsa (birinchi ishga tushirish) ochiq qoldiramiz.
+function requireAuth(req, res) {
+  if (!auth.isRegistered()) return true;
+  const r = auth.checkToken(auth.tokenFromReq(req));
+  if (!r.valid) { sendJson(res, 401, { error: 'auth_required' }); return false; }
+  return true;
+}
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -375,7 +385,41 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const p = url.pathname;
 
+  // Xavfsizlik sarlavhalari — clickjacking, MIME-sniffing va h.k.dan himoya
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(self), camera=()');
+
   try {
+    // --- Autentifikatsiya (login himoyasi) ---
+    if (p === '/api/auth/status') {
+      return sendJson(res, 200, { registered: auth.isRegistered() });
+    }
+    if (p === '/api/auth/register' && req.method === 'POST') {
+      const body = JSON.parse((await readBody(req)) || '{}');
+      const r = auth.register(body.username, body.password);
+      return sendJson(res, r.code || (r.ok ? 200 : 400), r);
+    }
+    if (p === '/api/auth/login' && req.method === 'POST') {
+      const body = JSON.parse((await readBody(req)) || '{}');
+      const r = auth.login(body.password, auth.clientIp(req));
+      return sendJson(res, r.code || (r.ok ? 200 : 401), r);
+    }
+    if (p === '/api/auth/session') {
+      const r = auth.checkToken(auth.tokenFromReq(req));
+      return sendJson(res, 200, r);
+    }
+    if (p === '/api/auth/logout' && req.method === 'POST') {
+      return sendJson(res, 200, auth.logout(auth.tokenFromReq(req)));
+    }
+    if (p === '/api/auth/change' && req.method === 'POST') {
+      const body = JSON.parse((await readBody(req)) || '{}');
+      const r = auth.changePassword(body.oldPassword, body.newPassword, auth.clientIp(req));
+      return sendJson(res, r.code || (r.ok ? 200 : 400), r);
+    }
+
     // --- API ---
     if (p === '/api/status') {
       return sendJson(res, 200, {
@@ -389,6 +433,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (p === '/api/tts' && req.method === 'POST') {
+      if (!requireAuth(req, res)) return;
       const gkey = config.geminiApiKey || process.env.GEMINI_API_KEY;
       if (!gkey) return sendJson(res, 400, { error: 'Gemini kaliti sozlanmagan (cameras.json → geminiApiKey)' });
       const body = JSON.parse((await readBody(req)) || '{}');
@@ -413,6 +458,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (p.startsWith('/api/snapshot/')) {
+      if (!requireAuth(req, res)) return;
       const cam = findCamera(decodeURIComponent(p.split('/').pop()));
       if (!cam) return sendJson(res, 404, { error: 'Kamera topilmadi' });
       const ch = cam.channel || 101;
@@ -426,6 +472,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (p.startsWith('/api/ptz/') && req.method === 'POST') {
+      if (!requireAuth(req, res)) return;
       const cam = findCamera(decodeURIComponent(p.split('/').pop()));
       if (!cam) return sendJson(res, 404, { error: 'Kamera topilmadi' });
       const body = JSON.parse((await readBody(req)) || '{}');
@@ -439,6 +486,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (p === '/api/notify/telegram' && req.method === 'POST') {
+      if (!requireAuth(req, res)) return;
       const t = config.telegram || {};
       if (!t.botToken || !t.chatId) return sendJson(res, 400, { error: 'Telegram sozlanmagan (cameras.json)' });
       const body = JSON.parse((await readBody(req)) || '{}');
@@ -452,6 +500,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (p === '/api/ai' && req.method === 'POST') {
+      if (!requireAuth(req, res)) return;
       const akey = config.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
       const gkey = config.geminiApiKey || process.env.GEMINI_API_KEY;
       if (!akey && !gkey) return sendJson(res, 400, { error: 'AI kaliti sozlanmagan' });
@@ -526,6 +575,12 @@ wss.on('connection', (ws, req) => {
   const url = new URL(req.url, 'http://x');
   const m = url.pathname.match(/^\/stream\/([^/?]+)/);
   if (!m) return ws.close();
+  // Video oqim ham himoyalangan — token bo'lmasa (parol o'rnatilgan holatda) rad etamiz.
+  // Brauzer WS'da sarlavha yubora olmaydi, shuning uchun token ?t= orqali keladi.
+  if (auth.isRegistered() && !auth.checkToken(url.searchParams.get('t')).valid) {
+    try { ws.send(JSON.stringify({ error: 'auth_required' })); } catch {}
+    return ws.close();
+  }
   const cam = findCamera(decodeURIComponent(m[1]));
   if (!cam) {
     ws.send(JSON.stringify({ error: 'Kamera topilmadi yoki demo rejim' }));

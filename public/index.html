@@ -52,9 +52,9 @@
 
   <div class="login-form-panel">
     <form class="login-form" id="loginForm">
-      <div class="login-kicker">TIZIMGA KIRISH</div>
-      <h1>Xush kelibsiz</h1>
-      <p class="sub">Nazorat markaziga kirish uchun hisobingizga kiring.</p>
+      <div class="login-kicker" id="loginKicker">TIZIMGA KIRISH</div>
+      <h1 id="loginTitle">Xush kelibsiz</h1>
+      <p class="sub" id="loginSub">Nazorat markaziga kirish uchun hisobingizga kiring.</p>
 
       <label class="field-label">Obyekt</label>
       <div class="field">
@@ -75,16 +75,13 @@
       <label class="field-label">Parol</label>
       <div class="field">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--text-3)" stroke-width="1.6"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
-        <input id="passInput" type="password" value="demo12345" autocomplete="current-password">
+        <input id="passInput" type="password" autocomplete="current-password" placeholder="••••••••">
       </div>
-
-      <div class="login-row">
-        <span class="toggle"><span class="tr"></span>Meni eslab qol</span>
-        <a href="#">Parolni unutdingizmi?</a>
-      </div>
+      <div class="login-hint" id="loginHint" style="font-size:12px;color:var(--text-3);margin:-2px 0 10px"></div>
+      <div class="login-error" id="loginError" style="font-size:13px;color:var(--high,#ff5a5a);margin:0 0 10px;min-height:16px"></div>
 
       <button type="submit" class="btn-primary">
-        Nazorat markaziga kirish
+        <span id="loginSubmitText">Nazorat markaziga kirish</span>
         <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#08110F" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </button>
 
@@ -377,6 +374,7 @@
 <div class="toasts" id="toasts"></div>
 
 <script>window.BUILD='__BUILD__';</script>
+<script src="js/session.js?v=__BUILD__"></script>
 <script src="js/data.js?v=__BUILD__"></script>
 <script src="js/stream.js?v=__BUILD__"></script>
 <script src="js/detector.js?v=__BUILD__"></script>
