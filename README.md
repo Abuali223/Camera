@@ -22,6 +22,17 @@ Interfeys to'liq o'zbek tilida, tungi/kunduzgi rejim mavjud.
 
 Talablar: [Node.js 18+](https://nodejs.org) va real kameralar uchun [ffmpeg](https://ffmpeg.org).
 
+### Eng oson yo'l — ish stolidagi yorliq (terminalsiz, Windows)
+
+1. `Ish-stoliga-yorliq.vbs` faylini **bir marta** ikki marta bosing → ish stolida
+   **"Sentinel AI"** yorlig'i (kamera ikonkasi bilan) paydo bo'ladi.
+2. Endi har doim o'sha yorliqni bosasiz — hech qanday qora terminal oynasisiz
+   dastur fonda ishga tushadi va brauzer o'zi ochiladi.
+
+To'xtatish kerak bo'lsa: `Sentinel-Toxtatish.vbs`.
+
+### Terminal orqali
+
 **Bitta buyruq** (IDE terminalida — Antigravity/VS Code) — o'rnatadi, ishga tushiradi
 va brauzerni avtomatik ochadi:
 
