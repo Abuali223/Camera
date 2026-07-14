@@ -200,8 +200,8 @@ const Assistant = {
 
     // --- surat olish ---
     if (has('rasm', 'surat', 'скрин', 'skrin', 'фото', 'foto', 'screenshot', 'снимок')) {
-      const camMatch = t.match(/(?:kamera|cam|камера)[\s-]*(\d+)/);
-      const camId = camMatch ? this._camByNum(camMatch[1]) : (App.screen === 'detail' ? App.detailCam : App.cameras[0]?.id);
+      const camNum = this._camNum(t);
+      const camId = camNum ? this._camByNum(camNum) : (App.screen === 'detail' ? App.detailCam : App.cameras[0]?.id);
       const url = App.takeSnapshot(camId, false);
       if (url) {
         this.say(`Surat olindi: ${camId}, ${App.nowStr()}. "Suratlar" bo'limida saqlandi.`);
@@ -247,9 +247,9 @@ const Assistant = {
     }
 
     // --- kamera ochish ---
-    const camMatch = t.match(/(?:kamera|cam|камера)[\s-]*(\d+)/);
-    if (camMatch && has('och', 'ko\'rsat', 'korsat', 'открой', 'покажи', 'ochib')) {
-      const camId = this._camByNum(camMatch[1]);
+    const openCamNum = this._camNum(t);
+    if (openCamNum && has('och', 'ko\'rsat', 'korsat', 'открой', 'покажи', 'ochib')) {
+      const camId = this._camByNum(openCamNum);
       if (camId) {
         App.detailCam = camId;
         App.go('detail');
@@ -357,6 +357,26 @@ const Assistant = {
     const id = 'CAM-' + String(n).padStart(2, '0');
     const cam = App.cameras.find((c) => c.id === id);
     return cam ? cam.id : null;
+  },
+
+  // Matndan kamera raqamini oladi — HAR IKKI tartibni tushunadi:
+  //   "kamera 4", "cam-4"  (raqam keyin, ruscha/inglizcha tartib)
+  //   "4-kamera", "4 kamera", "4chi kamera"  (raqam oldin — O'ZBEKCHA tabiiy tartib)
+  // hamda o'zbekcha tartib sonlar: "to'rtinchi kamera".
+  _camNum(t) {
+    // 1) "kamera 4" / "cam 4" / "камера 4"
+    let m = t.match(/(?:kamera|kamerani|kamerada|cam|камера|камеру)[\s-]*(\d+)/);
+    if (m) return m[1];
+    // 2) "4-kamera" / "4 kamera" / "4chi kamera" / "4 камера"
+    m = t.match(/(\d+)[\s-]*(?:chi|inchi|nchi)?[\s-]*(?:kamera|cam|камера)/);
+    if (m) return m[1];
+    // 3) o'zbekcha tartib sonlar
+    const words = {
+      birinchi: 1, ikkinchi: 2, uchinchi: 3, "to'rtinchi": 4, tortinchi: 4,
+      beshinchi: 5, oltinchi: 6, yettinchi: 7, ettinchi: 7, sakkizinchi: 8,
+    };
+    for (const w in words) if (t.includes(w)) return String(words[w]);
+    return null;
   },
 };
 
