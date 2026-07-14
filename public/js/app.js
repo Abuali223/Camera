@@ -180,6 +180,10 @@ const App = {
   },
 
   _stopDetailStream() {
+    // zoom transformini tozalaymiz — demo canvas grid'ga qaytса kichrayib qolmasin
+    const feed = this._detailFeed && this._detailFeed.el;
+    if (feed) feed.style.transform = '';
+    this._zoomState = { z: 1, tx: 0, ty: 0 };
     if (this.detailStream) {
       try { this.detailStream.stop(); } catch {}
       this.detailStream = null;
@@ -899,13 +903,18 @@ const App = {
       const bf = document.getElementById('bigFeed');
       if (bf && feedStream) bf.insertBefore(feedStream.el, bf.firstChild);
     }
+    this._setupZoom(); // raqamli zoom (yaqinlashtirish)
     document.getElementById('backToLive').addEventListener('click', () => this.go('live'));
     document.getElementById('snapBtn').addEventListener('click', (e) => {
       e.stopPropagation();
       this.takeSnapshot(cam.id, true);
     });
     document.querySelectorAll('[data-ptz]').forEach((b) => {
-      b.addEventListener('click', () => this.ptz(cam.id, b.dataset.ptz));
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // + / − endi brauzerda raqamli yaqinlashtiradi (kameralar qo'zg'almas)
+        this.zoomBy(b.dataset.ptz === 'zoomin' ? 1.5 : 1 / 1.5);
+      });
     });
 
     // vaqt jadvali
@@ -947,22 +956,74 @@ const App = {
     }
   },
 
-  async ptz(camId, dir) {
-    if (this.demo) {
-      this.toast('PTZ (demo)', 'Real kamerada bu buyruq kamerani boshqaradi', 'var(--accent-2)');
-      return;
-    }
-    const map = { zoomin: { zoom: 40 }, zoomout: { zoom: -40 } };
-    try {
-      await fetch(`/api/ptz/${encodeURIComponent(camId)}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(map[dir] || {}),
-      });
-      setTimeout(() => fetch(`/api/ptz/${encodeURIComponent(camId)}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pan: 0, tilt: 0, zoom: 0 }),
-      }), 500);
-    } catch {}
+  // ---------------------------------------------------------- Raqamli zoom
+  // Kameralar qo'zg'almas (motorli PTZ emas), shuning uchun yaqinlashtirish
+  // brauzerda video ustida amalga oshiriladi — istalgan kamerada ishlaydi.
+  _setupZoom() {
+    this._zoomState = { z: 1, tx: 0, ty: 0 };
+    const bf = document.getElementById('bigFeed');
+    if (!bf) return;
+    bf.style.overflow = 'hidden';
+    bf.style.cursor = 'zoom-in';
+
+    // sichqoncha g'ildiragi bilan zoom
+    bf.onwheel = (e) => {
+      e.preventDefault();
+      const r = bf.getBoundingClientRect();
+      this.zoomBy(e.deltaY < 0 ? 1.25 : 1 / 1.25, e.clientX - r.left, e.clientY - r.top);
+    };
+    // ikki marta bosish — asl holatga qaytarish
+    bf.ondblclick = (e) => { e.preventDefault(); this._zoomState = { z: 1, tx: 0, ty: 0 }; this._applyZoom(); };
+    // surib ko'chirish (pan) — yaqinlashtirilgan bo'lsa
+    let drag = null;
+    bf.onpointerdown = (e) => {
+      if (this._zoomState.z <= 1) return;
+      drag = { x: e.clientX, y: e.clientY, tx: this._zoomState.tx, ty: this._zoomState.ty };
+      bf.setPointerCapture(e.pointerId);
+      bf.style.cursor = 'grabbing';
+    };
+    bf.onpointermove = (e) => {
+      if (!drag) return;
+      this._zoomState.tx = drag.tx + (e.clientX - drag.x);
+      this._zoomState.ty = drag.ty + (e.clientY - drag.y);
+      this._applyZoom();
+    };
+    const endDrag = () => { drag = null; bf.style.cursor = this._zoomState.z > 1 ? 'grab' : 'zoom-in'; };
+    bf.onpointerup = endDrag;
+    bf.onpointercancel = endDrag;
+  },
+
+  zoomBy(factor, ox, oy) {
+    const bf = document.getElementById('bigFeed');
+    if (!bf) return;
+    const W = bf.clientWidth, H = bf.clientHeight;
+    if (ox == null) { ox = W / 2; oy = H / 2; } // markazga nisbatan
+    const s = this._zoomState || (this._zoomState = { z: 1, tx: 0, ty: 0 });
+    const oldZ = s.z;
+    const z = Math.min(6, Math.max(1, oldZ * factor)); // 1x .. 6x
+    // ko'rsatkich ostidagi nuqta joyida qolsin
+    s.tx = ox - ((ox - s.tx) / oldZ) * z;
+    s.ty = oy - ((oy - s.ty) / oldZ) * z;
+    s.z = z;
+    if (z === 1) { s.tx = 0; s.ty = 0; }
+    this._applyZoom();
+    bf.style.cursor = z > 1 ? 'grab' : 'zoom-in';
+  },
+
+  _applyZoom() {
+    const bf = document.getElementById('bigFeed');
+    if (!bf) return;
+    const W = bf.clientWidth, H = bf.clientHeight;
+    const s = this._zoomState;
+    // chetlardan chiqib ketmasin (video doim ekranni qoplaydi)
+    s.tx = Math.min(0, Math.max(W * (1 - s.z), s.tx));
+    s.ty = Math.min(0, Math.max(H * (1 - s.z), s.ty));
+    const t = `translate(${s.tx}px, ${s.ty}px) scale(${s.z})`;
+    const feed = this._detailFeed && this._detailFeed.el;
+    const boxes = document.getElementById('bigBoxes');
+    [feed, boxes].forEach((el) => {
+      if (el) { el.style.transformOrigin = '0 0'; el.style.transform = t; }
+    });
   },
 
   // ---------------------------------------------------------- RENDER: suratlar
