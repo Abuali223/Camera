@@ -243,6 +243,8 @@ button{font-family:inherit}
 .big-feed canvas.feed,.big-feed video.feed{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#0a0f14}
 .ptz{position:absolute;bottom:12px;right:14px;display:flex;gap:6px}
 .ptz button{width:30px;height:30px;border-radius:7px;border:1px solid rgba(255,255,255,.15);background:rgba(8,12,16,.55);color:#cfe0ee;cursor:pointer;font-size:14px}
+.ptz button#enhanceBtn{width:auto;padding:0 10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ptz button:hover{background:rgba(20,28,36,.85);border-color:rgba(255,255,255,.3)}
 .timeline-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:16px}
 .tl-track{position:relative;height:38px;border-radius:8px;background:var(--panel-2);border:1px solid var(--line);overflow:visible}
 .tl-mark{position:absolute;top:0;bottom:0;width:2px}

@@ -180,9 +180,9 @@ const App = {
   },
 
   _stopDetailStream() {
-    // zoom transformini tozalaymiz — demo canvas grid'ga qaytса kichrayib qolmasin
+    // zoom/filtrni tozalaymiz — demo canvas grid'ga qaytса kichrayib/rangi o'zgarib qolmasin
     const feed = this._detailFeed && this._detailFeed.el;
-    if (feed) feed.style.transform = '';
+    if (feed) { feed.style.transform = ''; feed.style.filter = ''; }
     this._zoomState = { z: 1, tx: 0, ty: 0 };
     if (this.detailStream) {
       try { this.detailStream.stop(); } catch {}
@@ -255,11 +255,21 @@ const App = {
         const stream = this.streams.get(cam.id);
         if (!stream) continue;
         const dets = await Detector.detect(stream, cam);
+        // yong'in / tutun aniqlash (yordamchi heuristika)
+        if (window.Hazard) {
+          const hz = Hazard.analyze(stream, cam);
+          if (hz.length) dets.push(...hz);
+        }
         this.detections.set(cam.id, dets);
         const danger = dets.find((d) => d.danger);
         if (danger && this._canAlert(cam.id)) {
+          const typeMap = {
+            person: 'Ruxsatsiz kirish',
+            fire: "🔥 YONG'IN XAVFI ANIQLANDI",
+            smoke: '💨 TUTUN ANIQLANDI',
+          };
           this.raiseAlert({
-            type: danger.kind === 'person' ? 'Ruxsatsiz kirish' : `Xavfli obyekt: ${danger.label}`,
+            type: typeMap[danger.kind] || `Xavfli obyekt: ${danger.label}`,
             cam: cam.id, zone: cam.zone, level: 'high', conf: danger.conf,
           });
         }
@@ -845,7 +855,8 @@ const App = {
             </div>
             <div style="position:absolute;bottom:12px;left:14px;font:500 11px var(--mono);color:#C3D3E1;text-shadow:0 1px 2px #000" id="bigTs"></div>
             <div class="ptz">
-              <button id="snapBtn" title="Surat olish">📷</button>
+              <button id="enhanceBtn" title="Tiniqlashtirish — raqam o'qish (bosib rejim almashadi)">✨ Oddiy</button>
+              <button id="snapBtn" title="Yuqori sifatli surat olish">📷</button>
               <button data-ptz="zoomout" title="Uzoqlashtirish">−</button>
               <button data-ptz="zoomin" title="Yaqinlashtirish">+</button>
             </div>
@@ -904,10 +915,11 @@ const App = {
       if (bf && feedStream) bf.insertBefore(feedStream.el, bf.firstChild);
     }
     this._setupZoom(); // raqamli zoom (yaqinlashtirish)
+    this._setupEnhance(); // tiniqlashtirish (raqam o'qish)
     document.getElementById('backToLive').addEventListener('click', () => this.go('live'));
     document.getElementById('snapBtn').addEventListener('click', (e) => {
       e.stopPropagation();
-      this.takeSnapshot(cam.id, true);
+      this.snapshotHiRes(cam.id); // yuqori sifatli (8MP) surat
     });
     document.querySelectorAll('[data-ptz]').forEach((b) => {
       b.addEventListener('click', (e) => {
@@ -1024,6 +1036,59 @@ const App = {
     [feed, boxes].forEach((el) => {
       if (el) { el.style.transformOrigin = '0 0'; el.style.transform = t; }
     });
+  },
+
+  // ---------------------------------------------------------- Tiniqlashtirish
+  // Rasmni tiniqlashtiradi — ayniqsa tunda avtomobil raqamini o'qish uchun.
+  // Bir necha tayyor rejim (preset) orasidan bosib almashtiriladi.
+  _ENHANCE: [
+    { name: 'Oddiy', filter: 'none' },
+    { name: 'Tiniqroq', filter: 'contrast(1.28) saturate(1.1) url(#sharpen)' },
+    { name: 'Tungi raqam', filter: 'brightness(0.82) contrast(1.7) url(#sharpen)' },
+    { name: 'Qorong\'i joy', filter: 'brightness(1.5) contrast(1.25) url(#sharpen)' },
+  ],
+  _setupEnhance() {
+    this._enhIdx = 0;
+    this._applyEnhance();
+    const btn = document.getElementById('enhanceBtn');
+    if (btn) btn.onclick = (e) => {
+      e.stopPropagation();
+      this._enhIdx = (this._enhIdx + 1) % this._ENHANCE.length;
+      this._applyEnhance();
+    };
+  },
+  _applyEnhance() {
+    const p = this._ENHANCE[this._enhIdx || 0];
+    const feed = this._detailFeed && this._detailFeed.el;
+    if (feed) feed.style.filter = p.filter === 'none' ? '' : p.filter;
+    const btn = document.getElementById('enhanceBtn');
+    if (btn) btn.textContent = '✨ ' + p.name;
+  },
+
+  // ---------------------------------------------------------- Yuqori sifatli surat
+  // Detal ko'rinishida 📷 — kameradan TO'G'RIDAN-TO'G'RI 8MP JPEG oladi (ISAPI),
+  // video kadridan emas. Shu tufayli avtomobil raqami eng aniq chiqadi.
+  async snapshotHiRes(camId) {
+    if (this.demo) return this.takeSnapshot(camId, true);
+    this.toast('Surat olinmoqda…', `${camId} · yuqori sifat`, 'var(--accent-2)');
+    try {
+      const r = await fetch(`/api/snapshot/${encodeURIComponent(camId)}`);
+      if (!r.ok) throw new Error('snapshot');
+      const blob = await r.blob();
+      const url = await new Promise((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result);
+        fr.onerror = rej;
+        fr.readAsDataURL(blob);
+      });
+      this.addSnapshot(camId, url, "Qo'lda · yuqori sifat (8MP)", false);
+      this.downloadSnapshot(url, camId);
+      this.toast('Surat olindi', `${camId} · 8MP · ${this.nowStr()}`, 'var(--accent)');
+      return url;
+    } catch {
+      // zaxira: video kadri
+      return this.takeSnapshot(camId, true);
+    }
   },
 
   // ---------------------------------------------------------- RENDER: suratlar

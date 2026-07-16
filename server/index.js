@@ -461,7 +461,8 @@ const server = http.createServer(async (req, res) => {
       if (!requireAuth(req, res)) return;
       const cam = findCamera(decodeURIComponent(p.split('/').pop()));
       if (!cam) return sendJson(res, 404, { error: 'Kamera topilmadi' });
-      const ch = cam.channel || 101;
+      // Surat ASOSIY (8MP) kanaldan olinadi — avtomobil raqami o'qiladigan sifat
+      const ch = channelFor(cam, 'main');
       return isapiRequest(cam, 'GET', `/ISAPI/Streaming/channels/${ch}/picture`, null, (err, r, buf) => {
         if (err || r.statusCode !== 200) {
           return sendJson(res, 502, { error: 'Snapshot olinmadi: ' + (err ? err.message : r.statusCode) });

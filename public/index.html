@@ -374,11 +374,20 @@
 
 <div class="toasts" id="toasts"></div>
 
+<!-- Tiniqlashtirish (sharpen) filtri — avtomobil raqamini o'qish uchun -->
+<svg width="0" height="0" style="position:absolute"><defs>
+  <filter id="sharpen">
+    <feConvolveMatrix order="3" preserveAlpha="true"
+      kernelMatrix="0 -0.4 0  -0.4 2.6 -0.4  0 -0.4 0"/>
+  </filter>
+</defs></svg>
+
 <script>window.BUILD='__BUILD__';</script>
 <script src="js/session.js?v=__BUILD__"></script>
 <script src="js/data.js?v=__BUILD__"></script>
 <script src="js/stream.js?v=__BUILD__"></script>
 <script src="js/detector.js?v=__BUILD__"></script>
+<script src="js/hazard.js?v=__BUILD__"></script>
 <script src="js/app.js?v=__BUILD__"></script>
 <script src="js/assistant.js?v=__BUILD__"></script>
 </body>
