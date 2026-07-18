@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube O'zbek Tarjimon",
+  "description": "YouTube'dagi inglizcha (va boshqa tillardagi) subtitrlarni real vaqtda o'zbek tiliga tarjima qilib ko'rsatadi.",
+  "version": "1.0.0",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://translate.googleapis.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "YouTube O'zbek Tarjimon"
+  }
+}
