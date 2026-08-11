@@ -240,6 +240,10 @@ function startTsStream(ws, cam, quality) {
   let gotData = false;
   let triedCpu = !useGpu;
   let triedMainCh = quality !== 'sub'; // sub'da 404 bo'lsa asosiy kanalga o'tamiz
+  let lastErr = ''; // oxirgi mazmunli ffmpeg xato qatori (tashxis uchun)
+  const noteErr = (msg, raw) => {
+    if (!gotData) streamErrors[cam.id] = { msg, raw: (raw || '').slice(0, 160), ts: Date.now() };
+  };
   const wire = (p) => {
     p.stdout.on('data', (chunk) => {
       if (!gotData) {
@@ -251,18 +255,23 @@ function startTsStream(ws, cam, quality) {
     });
     p.stderr.on('data', (d) => {
       const s = d.toString();
-      if (/401|Unauthorized|refused|timed out|not found|Invalid data|Cannot load|No such|nvenc|Impossible|Error/i.test(s)) {
+      if (/401|Unauthorized|refused|timed out|not found|Invalid data|Cannot load|No such|nvenc|Impossible|Error|Connection|denied|failed/i.test(s)) {
         const line = (s.split('\n').find((l) => l.trim()) || '').trim();
         if (line) {
           console.error(`[stream] ${cam.id}/${quality}: ${line.slice(0, 160)}`);
           // nvenc/GPU xatosi CPU'ga o'tishning bir qismi — tashxisga yozmaymiz
-          if (!gotData && !/nvenc|Impossible|Cannot load.*cuda/i.test(line)) {
-            streamErrors[cam.id] = { msg: classifyErr(line), raw: line.slice(0, 160), ts: Date.now() };
+          if (!/nvenc|Impossible|Cannot load.*cuda|Conversion failed/i.test(line)) {
+            lastErr = line;
+            noteErr(classifyErr(line), line);
           }
         }
       }
     });
-    p.on('error', (e) => console.error(`[stream] ${cam.id} ffmpeg xato: ${e.message}`));
+    p.on('error', (e) => {
+      console.error(`[stream] ${cam.id} ffmpeg xato: ${e.message}`);
+      if (/ENOENT/.test(e.message)) noteErr('ffmpeg topilmadi — o\'rnatilmagan bo\'lishi mumkin', e.message);
+      else noteErr('ffmpeg ishga tushmadi: ' + e.message, e.message);
+    });
     p.on('close', (code) => {
       // GPU birinchi urinishда darhol yiqilса — CPU'ga o'tamiz
       if (!gotData && !triedCpu) {
@@ -286,6 +295,14 @@ function startTsStream(ws, cam, quality) {
       }
       if (!gotData) {
         console.error(`[stream] ${cam.id}/${quality}: video kelmadi (kod ${code})`);
+        // hali aniq sabab yozilmagan bo'lsa — umumiy tashxis qoldiramiz
+        if (!streamErrors[cam.id]) {
+          streamErrors[cam.id] = {
+            msg: lastErr ? classifyErr(lastErr)
+              : 'Video kelmadi — NVR parolini yoki blokini tekshiring',
+            raw: (lastErr || `close ${code}`).slice(0, 160), ts: Date.now(),
+          };
+        }
       }
       // matn YUBORMAYMIZ (mpegts.js binary kutadi) — shunchaki yopamiz, mijoz qayta urinadi
       try { if (ws.readyState === 1) ws.close(4005, 'stream_failed'); } catch {}
