@@ -264,9 +264,9 @@ function startTsStream(ws, cam, quality) {
       }
       if (!gotData) {
         console.error(`[stream] ${cam.id}/${quality}: video kelmadi (kod ${code})`);
-        try { if (ws.readyState === 1) ws.send(JSON.stringify({ error: 'stream_failed' })); } catch {}
       }
-      try { if (ws.readyState === 1) ws.close(); } catch {}
+      // matn YUBORMAYMIZ (mpegts.js binary kutadi) — shunchaki yopamiz, mijoz qayta urinadi
+      try { if (ws.readyState === 1) ws.close(4005, 'stream_failed'); } catch {}
     });
   };
   wire(proc);
@@ -578,14 +578,15 @@ wss.on('connection', (ws, req) => {
   if (!m) return ws.close();
   // Video oqim ham himoyalangan — token bo'lmasa (parol o'rnatilgan holatda) rad etamiz.
   // Brauzer WS'da sarlavha yubora olmaydi, shuning uchun token ?t= orqali keladi.
+  // MUHIM: mpegts.js faqat BINARY kutadi — matnli xabar yuborsak "Unsupported
+  // WebSocket message type: String" xatosi chiqadi. Shuning uchun matn yubormasdan,
+  // faqat maxsus close-kod bilan yopamiz (mijoz o'zi qayta urinadi).
   if (auth.isRegistered() && !auth.checkToken(url.searchParams.get('t')).valid) {
-    try { ws.send(JSON.stringify({ error: 'auth_required' })); } catch {}
-    return ws.close();
+    return ws.close(4003, 'auth');
   }
   const cam = findCamera(decodeURIComponent(m[1]));
   if (!cam) {
-    ws.send(JSON.stringify({ error: 'Kamera topilmadi yoki demo rejim' }));
-    return ws.close();
+    return ws.close(4004, 'no_cam');
   }
   const quality = url.searchParams.get('q') === 'main' ? 'main' : 'sub';
   const fmt = url.searchParams.get('fmt') === 'mjpeg' ? 'mjpeg' : 'ts';
