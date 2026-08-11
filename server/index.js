@@ -183,6 +183,18 @@ function isapiRequest(cam, method, uri, body, cb) {
 }
 
 // ---------------------------------------------------- RTSP → MJPEG oqimlari
+// Oqim xatolarini eslab qolamiz — tashxis uchun (server yashirin ishlaydi,
+// shuning uchun sababни brauzerда ko'rsatamiz).
+const streamErrors = {}; // camId -> { msg, raw, ts }
+function classifyErr(s) {
+  if (/401|Unauthorized/i.test(s)) return "Parol yoki login noto'g'ri (401)";
+  if (/refused|End of file|timed out|timeout|Connection reset/i.test(s))
+    return 'Ulanish rad etildi — NVR IP\'ni bloklagan bo\'lishi mumkin. NVR\'ni qayta yoqing (reboot).';
+  if (/404|not found/i.test(s)) return 'Kanal topilmadi (404)';
+  if (/No route|unreachable|Network is/i.test(s)) return "Tarmoq yo'q — NVR IP manzilini tekshiring";
+  return s.slice(0, 120);
+}
+
 // Kamera kanalini hisoblash: main = baza*100+1 (to'liq 8MP), sub = baza*100+2 (yengil)
 function channelFor(cam, quality) {
   const base = Math.floor((cam.channel || 101) / 100) || 1;
@@ -230,14 +242,24 @@ function startTsStream(ws, cam, quality) {
   let triedMainCh = quality !== 'sub'; // sub'da 404 bo'lsa asosiy kanalga o'tamiz
   const wire = (p) => {
     p.stdout.on('data', (chunk) => {
-      if (!gotData) { gotData = true; console.log(`[stream] ${cam.id}/${quality}: oqim keldi ✓`); }
+      if (!gotData) {
+        gotData = true;
+        delete streamErrors[cam.id]; // oqim keldi — xato yo'q
+        console.log(`[stream] ${cam.id}/${quality}: oqim keldi ✓`);
+      }
       if (ws.readyState === 1) ws.send(chunk);
     });
     p.stderr.on('data', (d) => {
       const s = d.toString();
       if (/401|Unauthorized|refused|timed out|not found|Invalid data|Cannot load|No such|nvenc|Impossible|Error/i.test(s)) {
-        const line = s.split('\n').find((l) => l.trim());
-        if (line) console.error(`[stream] ${cam.id}/${quality}: ${line.trim().slice(0, 160)}`);
+        const line = (s.split('\n').find((l) => l.trim()) || '').trim();
+        if (line) {
+          console.error(`[stream] ${cam.id}/${quality}: ${line.slice(0, 160)}`);
+          // nvenc/GPU xatosi CPU'ga o'tishning bir qismi — tashxisga yozmaymiz
+          if (!gotData && !/nvenc|Impossible|Cannot load.*cuda/i.test(line)) {
+            streamErrors[cam.id] = { msg: classifyErr(line), raw: line.slice(0, 160), ts: Date.now() };
+          }
+        }
       }
     });
     p.on('error', (e) => console.error(`[stream] ${cam.id} ffmpeg xato: ${e.message}`));
@@ -446,6 +468,22 @@ const server = http.createServer(async (req, res) => {
       } catch (e) {
         return sendJson(res, 502, { error: 'TTS xatosi: ' + e.message });
       }
+    }
+
+    if (p === '/api/diag') {
+      if (!requireAuth(req, res)) return;
+      // har kamera uchun oxirgi oqim xatosi (tashxis) + umumiy holat
+      const now = Date.now();
+      const errors = {};
+      for (const id in streamErrors) {
+        if (now - streamErrors[id].ts < 60000) errors[id] = streamErrors[id];
+      }
+      return sendJson(res, 200, {
+        demo: config.demo,
+        ffmpeg: FFMPEG,
+        nvrIp: (config.nvr && config.nvr.ip) || (config.cameras[0] && config.cameras[0].ip) || null,
+        errors,
+      });
     }
 
     if (p === '/api/cameras') {

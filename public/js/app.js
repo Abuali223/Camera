@@ -158,6 +158,40 @@ const App = {
     this.streams.forEach((s) => {
       if (s.stop && s.start) { s.stop(); s._fails = 0; s.start(); }
     });
+    this.startDiagLoop();
+  },
+
+  // Server yashirin ishlagani uchun — RTSP ulanish sababini brauzerда ko'rsatamiz.
+  startDiagLoop() {
+    if (this.demo || this._diagTimer) return;
+    const poll = async () => {
+      try {
+        const d = await fetch('/api/diag').then((r) => r.json());
+        this._diag = d.errors || {};
+      } catch { this._diag = {}; }
+    };
+    poll();
+    this._diagTimer = setInterval(poll, 4000);
+  },
+
+  // Har kadr chaqiriladi: video kelayotgan bo'lsa statusni yashiradi,
+  // aks holda "ULANMOQDA…" yoki aniq xato sababini ko'rsatadi.
+  _updateTileStatus(tile, camId) {
+    const el = tile.querySelector('.cam-status');
+    if (!el) return;
+    if (this.demo) { el.style.display = 'none'; return; }
+    const s = this.streams.get(camId);
+    const hasVideo = s && s.video && s.video.videoWidth > 0 && s.video.readyState >= 2;
+    if (hasVideo) { el.style.display = 'none'; return; }
+    const err = this._diag && this._diag[camId];
+    el.style.display = '';
+    if (err) {
+      el.textContent = '⚠ ' + err.msg;
+      el.classList.add('err');
+    } else {
+      el.textContent = 'ULANMOQDA…';
+      el.classList.remove('err');
+    }
   },
 
   /** Chiqish UI qismi (Session tokenni tozalab, buni chaqiradi) */
@@ -607,6 +641,7 @@ const App = {
           ${cam.online ? `<span class="cam-badge"><span class="dot" style="background:var(--hi)"></span>LIVE</span>` : ''}
         </div>
         ${cam.online ? `
+        <div class="cam-status">ULANMOQDA…</div>
         <div class="cam-bottom">
           <span class="cam-ts">${this.nowStr()}</span>
           <span class="chipwrap"></span>
@@ -637,6 +672,7 @@ const App = {
       const camId = tile.dataset.cam;
       const cam = this.cameras.find((c) => c.id === camId);
       if (!cam || !cam.online) return;
+      this._updateTileStatus(tile, camId); // "ULANMOQDA…" / xato sababi
       const dets = this.detections.get(camId) || [];
       // Eslatma: ramkalar (.boxes) endi startOverlayLoop() da har kadrda chiziladi.
       const ts = tile.querySelector('.cam-ts');
