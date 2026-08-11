@@ -83,8 +83,11 @@ const App = {
     this.cameras.forEach((cam, i) => {
       if (!cam.online) return;
       const s = createStream(cam, i, this.demo);
-      s.start();
       this.streams.set(cam.id, s);
+      // Demo — darhol boshlaymiz (faqat canvas, WS yo'q).
+      // Real oqimlar esa FAQAT login'dan keyin boshlanadi (enterApp -> reconnectStreams)
+      // — token bilan. Aks holda login oynasi ortida noto'g'ri parolда konsол xato bilan to'ladi.
+      if (this.demo) s.start();
     });
   },
 
