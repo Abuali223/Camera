@@ -219,8 +219,12 @@ class RealStream {
     this.running = false;
     this.mode = 'ts';
     this._fails = 0;
+    this._hasFrame = false;
     // muvaffaqiyatli o'ynay boshlasa — qayta urinish oralig'ini nolga tushiramiz
-    this.video.addEventListener('playing', () => { this._fails = 0; });
+    this.video.addEventListener('playing', () => {
+      this._fails = 0;
+      if (!this._hasFrame) { this._hasFrame = true; console.log(`[stream] ${this.cam.id} ✓ video keldi`); }
+    });
   }
 
   start() {
@@ -231,7 +235,11 @@ class RealStream {
 
   async _startTs() {
     await ensureMpegts();
-    if (!window.mpegts || !mpegts.isSupported()) return this._startMjpeg();
+    if (!window.mpegts || !mpegts.isSupported()) {
+      console.warn(`[stream] ${this.cam.id}: mpegts qo'llab-quvvatlanmadi -> MJPEG`);
+      return this._startMjpeg();
+    }
+    console.log(`[stream] ${this.cam.id} ulanmoqda (mpegts)…`);
     const url = this._wsUrl('ts');
     try {
       this.player = mpegts.createPlayer(
@@ -272,6 +280,7 @@ class RealStream {
       if (!bmp) return;
       this.ctx.drawImage(bmp, 0, 0, CAM_W, CAM_H);
       bmp.close();
+      if (!this._hasFrame) { this._hasFrame = true; console.log(`[stream] ${this.cam.id} ✓ video keldi (MJPEG)`); }
     };
     this.ws.onclose = () => { if (this.running) this._retry = setTimeout(() => { this.ws = null; this._startMjpeg(); }, this._backoff()); };
   }
@@ -293,7 +302,15 @@ class RealStream {
   _onFail() {
     if (!this.running) return;
     this._destroyPlayer();
-    this._retry = setTimeout(() => { if (this.running) this._startTs(); }, this._backoff());
+    this._fails = (this._fails || 0) + 1;
+    console.warn(`[stream] ${this.cam.id} oqim xatosi (urinish ${this._fails})`);
+    // 2 marta mpegts ishlamasa — MJPEG zaxiraga o'tamiz (ba'zi tarmoq/kodek holatlari uchun)
+    if (this.mode === 'ts' && this._fails >= 2) {
+      console.warn(`[stream] ${this.cam.id}: mpegts ishlamadi -> MJPEG zaxiraga o'tildi`);
+      return this._startMjpeg();
+    }
+    const wait = Math.min(4000 * this._fails, 60000);
+    this._retry = setTimeout(() => { if (this.running) this._startTs(); }, wait);
   }
 
   // AI aniqlash uchun joriy video kadrini canvasga chizadi

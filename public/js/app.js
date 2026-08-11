@@ -148,18 +148,26 @@ const App = {
         Notification.requestPermission();
       }
     }
-    // Video oqimlari login'dan oldin (tokensiz) ochilgan bo'lsa — token bilan
-    // darhol qayta ulaymiz, aks holda kameralar 4-8s kech ko'rinardi.
-    if (!this.demo && window.Session && Session.token) this.reconnectStreams();
+    // Real oqimlarni login'dan keyin (token tayyor) ishga tushiramiz.
+    if (!this.demo) this.startRealStreams();
     Assistant.say(`Xush kelibsiz, ${user}! Tizim nazorat ostida. Menga buyruq berishingiz mumkin — masalan "holatni ayt" yoki "rasmga ol".`, false);
   },
 
-  reconnectStreams() {
+  startRealStreams() {
+    let n = 0;
     this.streams.forEach((s) => {
-      if (s.stop && s.start) { s.stop(); s._fails = 0; s.start(); }
+      if (s.start) {
+        if (s.running && s.stop) s.stop();
+        s._fails = 0;
+        s.start();
+        n++;
+      }
     });
+    console.log(`[app] real oqimlar ishga tushdi: ${n} ta (token: ${window.Session && Session.token ? 'bor' : "YO'Q"})`);
     this.startDiagLoop();
   },
+  // eski nom bilan moslik
+  reconnectStreams() { this.startRealStreams(); },
 
   // Server yashirin ishlagani uchun — RTSP ulanish sababini brauzerда ko'rsatamiz.
   startDiagLoop() {
@@ -181,7 +189,8 @@ const App = {
     if (!el) return;
     if (this.demo) { el.style.display = 'none'; return; }
     const s = this.streams.get(camId);
-    const hasVideo = s && s.video && s.video.videoWidth > 0 && s.video.readyState >= 2;
+    // _hasFrame — mpegts yoki MJPEG orqali kamida bitta kadr kelgan bo'lsa
+    const hasVideo = s && (s._hasFrame || (s.video && s.video.videoWidth > 0 && s.video.readyState >= 2));
     if (hasVideo) { el.style.display = 'none'; return; }
     const err = this._diag && this._diag[camId];
     el.style.display = '';
